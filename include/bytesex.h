@@ -1,0 +1,55 @@
+#ifndef __BYTESEX_H
+#define __BYTESEX_H
+
+static inline __attribute__((const)) u_int16_t bswap16(u_int16_t x)
+{
+	return ((u_int16_t)(
+		(((u_int16_t)(x) & (u_int16_t)0x00ffU) << 8) |
+	 	(((u_int16_t)(x) & (u_int16_t)0xff00U) >> 8) ));
+}
+
+static inline __attribute__((const)) u_int32_t bswap32(u_int32_t x)
+{
+	return ((u_int32_t)(
+		(((u_int32_t)(x) & (u_int32_t)0x000000ffUL) << 24) |
+		(((u_int32_t)(x) & (u_int32_t)0x0000ff00UL) <<  8) |
+		(((u_int32_t)(x) & (u_int32_t)0x00ff0000UL) >>  8) |
+		(((u_int32_t)(x) & (u_int32_t)0xff000000UL) >> 24) ));
+}
+
+static inline __attribute__((const)) float bswapf(float x)
+{
+	union {
+		float f;
+		unsigned char b[4];
+	}dat1, dat2;
+
+	dat1.f = x;
+	dat2.b[0] = dat1.b[3];
+	dat2.b[1] = dat1.b[2];
+	dat2.b[2] = dat1.b[1];
+	dat2.b[3] = dat1.b[0];
+
+	return dat2.f;
+}
+
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define le_float(x) bswapf(x)
+#define be_float(x) (x)
+#define le_32(x) bswap32(x)
+#define le_16(x) bswap16(x)
+#define be_32(x) (x)
+#define be_16(x) (x)
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+#define le_float(x) (x)
+#define be_float(x) bswapf(x)
+#define le_32(x) (x)
+#define le_16(x) (x)
+#define be_32(x) htonl(x)
+#define be_16(x) htons(x)
+#else
+#error "What in hells name?!"
+#endif
+
+#endif /* __BYTESEX_H */

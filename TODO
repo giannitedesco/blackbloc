@@ -1,0 +1,19 @@
+Things to do
+------------
+ o MD5 model support
+ o Model close method
+ o Send frame updates from server
+ o Mipmap support for textures
+ o Screenshots
+ o Re-do console and HUD
+ o Collision detection with world
+ o Particle effects
+ o Atmospherics
+ o SkyBox
+
+Frustum Culling
+---------------
+ Frustum is 6 planes: 4 sides, near and far
+ The dot-product of a point and a plane is the distance.
+ If distance + radius > 0 then point is inside the plane.
+ Radius is abs(the furthest extent)

@@ -1,0 +1,137 @@
+Fri May 09 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Crouch and jump support
+
+Thu May 08 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Can now type commands at the console
+ * Change to 32 bit mode
+ * Put structures in-place for mipmaps
+ * Fix altivec detection
+
+Wed May 07 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Split skin loading out of MD2 loader
+ * Add timeouts to reads for server
+ * Change hud_printf to con_printf
+ * Function to print right on to the HUD
+ * Implement disconnect in server
+ * Client timeouts
+ * Add a crosshair
+
+Tue May 06 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Add interpolated motion non dependent on frame rate
+ * Global player blending infrastructure
+ * Start writing server
+ * Split up MD2 loader in to client and server part
+ * Add networking code
+
+Mon May 05 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Calculate extents for models, store in entity
+ * Change to event queue model
+ * Add client command and key bind infrastructure
+
+Sun May 04 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Full BSP vis rendering
+ * Add BSP lightmaps
+ * Re-add quake2 client support
+ * Fix v_angles
+
+Sat May 03 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Remove quake2 network stuff
+ * Make gfile more object oriented
+ * Make q2pak much more efficient with multiple pak files
+ * Add direct filesystem access to gfile
+ * Add open method to gfile
+ * Add type_name and type_desc to gfile_ops
+ * Define struct entity
+ * Add model control API
+ * Change pcx to img_pcx
+ * Add PNG support
+ * Interpolated motion
+ * Determine BSP cluster and mark leaves
+
+Thu Apr 30 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Fix hud_printf when going off the end of the screen
+ * Parse sounds and muzzle flashes
+ * Optimise server packet parsing
+ * Add sound module
+ * Save entity details
+ * Parse all types of server message
+ * Render map and objects
+
+Wed Apr 30 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Add cl_net module
+ * Add quake2 networking code
+
+Tue Apr 29 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * More studio work
+ * Full-speed rendering
+ * Calculate FPS
+ * Linear interpolation for md2 animations
+ * Add v_multadd()
+
+Sun Mar 09 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Get rid of gcc-vec stuff, use gcc-3.2
+ * Sprinkle consts in vector functions arguments
+
+Sun Feb 23 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Start adding half life model structures
+
+Mon Feb 17 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Load all information from BSP file and covert byte orders
+ * Render full QuakeII BSP maps
+ * Fix bug in v_dotproduct
+
+Sun Feb 16 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * q2wal_load_by_name
+ * Finish off MD2 loader
+ * Unload textures as soon as uploaded
+ * Add HUD rendering code
+ * Change the scale of things
+ * Start off a QuakeII BSP map file loader
+ * Transparent console
+
+Sat Feb 15 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Beef up texture API, nice QII WAL API.
+ * Update PCX loader to new mode, fix mem leak.
+ * Overhaul bytesex.h
+ * Basic MD2 model loader
+ * Support scaling up of RGBA textures to powers of two
+
+Thu Feb 12 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Finish off low-level particle API
+ * Re-enable back-face culling
+ * Strafing hack
+ * Make q2wal depend on PCX not the other way round
+ * Tidy up QII WAL loader and fix upload bug
+ * Tidy up GL texture uploading
+ * Make WAL palette RGB only
+ * Full PCX loader
+ * Allow transparency in PCX loader
+ * Added QuakeII MD2 header
+
+Wed Feb 11 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Make vector functions pure functions
+ * s/__vector/__valign for altivec.h compatiblity
+ * Go back to arrays for vectors, much neater
+ * Fix particle rendering
+ * v_subtract -> v_sub
+ * Make v_add/v_sub take three args
+
+Tue Feb 11 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Install gcc-vec to get 16 byte stack boundaries
+ * Check for gcc-vec in configure script
+
+Mon Feb 10 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Start altivec optimisations
+
+Sun Feb 09 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Remove server variables, tidy up code
+ * Add basic 3d graphics primitves library
+ * Sort out motion code
+
+Sat Feb 08 2003 Gianni Tedesco <gianni@ecsc.co.uk>
+ * Added quake2 pak file support
+ * Added gfile (game file) infrastructure
+ * Added quake2 WAL (texture) support
+ * Added PCX image support
+ * Removed server code
+ * Particle rendering system
