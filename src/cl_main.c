@@ -32,10 +32,8 @@ int cl_init(void)
 		return 0;
 
 	/* Load quake2 pak files */
-	//q2pak_add("/usr/local/share/quake2/baseq2/pak0.pak");
-	//q2pak_add("/home/scara/.quake2/baseq2/pak1.pak");
-	q2pak_add("pak0.pak");
-	q2pak_add("pak1.pak");
+	q2pak_add("data/pak0.pak");
+	q2pak_add("data/pak1.pak");
 
 	/* Bind keys */
 	cl_cmd_bind("backquote", "console");
