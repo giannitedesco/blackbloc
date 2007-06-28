@@ -150,7 +150,7 @@ void q2pak_add(char *fn)
 		r->data=p->map+le_32(files[i].filepos);
 		r->len=le_32(files[i].filelen);
 		r->owner=p;
-		r->hash=skunk_hash(files[i].name);
+		r->hash=fnv_hash(files[i].name);
 
 		/* Check data is readable */
 		if ( r->data + r->len > end ) {
@@ -186,10 +186,10 @@ err:
 /* Open a file */
 int q2pak_open(struct gfile *f, const char *path)
 {
-	skunk_hash_t hash;
+	fnv_hash_t hash;
 	struct pak_rec *r;
 
-	hash=skunk_hash(path);
+	hash=fnv_hash(path);
 
 	for(r=pakhash[hash%PAKHASH]; r; r=r->next) {
 		if ( r->hash==hash && !strcmp(r->name, path) ) {

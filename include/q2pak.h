@@ -6,7 +6,7 @@
 #ifndef __Q2PAK_HEADER_INCLUDED__
 #define __Q2PAK_HEADER_INCLUDED__
 
-#include <skunk_hash.h>
+#include <fnv_hash.h>
 
 /* On disk format */
 #define IDPAKHEADER (('K'<<24)|('C'<<16)|('A'<<8)|'P')
@@ -29,7 +29,7 @@ struct pak_dfile {
 
 struct pak_rec {
 	struct pak_rec *next;
-	skunk_hash_t hash;
+	fnv_hash_t hash;
 	char *name;
 	char *data;
 	size_t len;
