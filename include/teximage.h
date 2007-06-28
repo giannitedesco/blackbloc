@@ -19,7 +19,7 @@ struct image {
 
 	/* source image */
 	struct gfile f;
-	unsigned int s_width, s_height;
+	uint32_t s_width, s_height;
 	uint8_t *s_pixels;
 
 	/* Final scaled image */

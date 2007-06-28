@@ -60,23 +60,23 @@ struct md2_frame{
 */
 
 struct md2_mdl {
-	int ident, version;
-	int skinwidth, skinheight;
-	int framesize; /* in bytes */
+	uint32_t ident, version;
+	uint32_t skinwidth, skinheight;
+	uint32_t framesize; /* in bytes */
 
-	int num_skins;
-	int num_xyz;
-	int num_st;
-	int num_tris;
-	int num_glcmds; /* dwords in command list */
-	int num_frames;
+	uint32_t num_skins;
+	uint32_t num_xyz;
+	uint32_t num_st;
+	uint32_t num_tris;
+	uint32_t num_glcmds; /* dwords in command list */
+	uint32_t num_frames;
 
-	int ofs_skins;
-	int ofs_st;
-	int ofs_tris;
-	int ofs_frames;
-	int ofs_glcmds;
-	int ofs_end; /* end of file (??) */
+	uint32_t ofs_skins;
+	uint32_t ofs_st;
+	uint32_t ofs_tris;
+	uint32_t ofs_frames;
+	uint32_t ofs_glcmds;
+	uint32_t ofs_end; /* end of file (??) */
 };
 
 /* Internal API */

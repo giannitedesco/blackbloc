@@ -27,7 +27,7 @@ void md2_extents(struct md2 *m, aframe_t frame,
 			vector_t mins, vector_t maxs)
 {
 	vector_t tmp;
-	int i, j;
+	uint32_t i, j;
 
 	mins[X] = mins[Y] = mins[Z] = 999999.0f;
 	maxs[X] = maxs[Y] = maxs[Z] = -99999.0f;
@@ -53,7 +53,7 @@ void *md2_load(const char *name)
 {
 	struct md2_mdl hdr;
 	uint32_t *tmp;
-	int i;
+	uint32_t i;
 	size_t alias_len;
 	struct md2_aliasframe *f;
 	struct md2 *m;

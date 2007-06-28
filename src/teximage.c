@@ -47,7 +47,7 @@ int img_upload_generic(struct image *img, GLint format)
 
 int img_upload_rgb2rgba(struct image *i)
 {
-	int w, h;
+	uint32_t w, h;
 	uint8_t *buf;
 
 	/* Round to powers of 2 (for OpenGL) */

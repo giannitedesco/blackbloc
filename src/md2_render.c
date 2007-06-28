@@ -67,7 +67,7 @@ void md2_render(struct cl_ent *ent)
 	int frame, oldframe;
 	vector_t org, rot;
 	int count;
-	int i;
+	uint32_t i;
 
 	if ( !m )
 		return;

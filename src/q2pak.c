@@ -99,7 +99,7 @@ void q2pak_add(char *fn)
 		goto err_close;
 	}
 
-	if ( st.st_size<sizeof(hdr) ) {
+	if ( st.st_size < (loff_t)sizeof(hdr) ) {
 		con_printf("file is too small for header!\n");
 		goto err_close;
 	}

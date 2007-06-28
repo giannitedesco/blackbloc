@@ -21,7 +21,7 @@ static int pcx_upload(struct image *i)
 	unsigned char *pal;
 	unsigned char cur;
 	int run;
-	int x,y;
+	uint32_t x,y;
 
 	/* The size is checked in pcx_load */
 	pal=i->f.data + i->f.len - PCX_PAL;
