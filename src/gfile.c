@@ -27,13 +27,13 @@ static struct gfile_ops direct_ops={
 	.type_desc= "Direct Filesystem Access",
 };
 
-void direct_close(struct gfile *f)
+static void direct_close(struct gfile *f)
 {
 	free(f->priv);
 	munmap(f->data, f->len);
 }
 
-int direct_open(struct gfile *f, const char *fn)
+static int direct_open(struct gfile *f, const char *fn)
 {
 	size_t grlen = strlen(game_root);
 	size_t len = grlen + strlen(fn) + 2;
