@@ -11,7 +11,7 @@
 #include <hud.h>
 #include <gl_render.h>
 
-#if 1
+#if 2
 int vid_x = 1024;
 int vid_y = 768;
 int vid_depth = 32;

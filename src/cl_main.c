@@ -15,6 +15,7 @@
 #include <q2pak.h>
 #include <md2.h>
 #include <client.h>
+#include <studio_model.h>
 
 frame_t client_frame;
 int cl_alive = 1;
@@ -58,12 +59,16 @@ int cl_init(void)
 	cl_model_load(&ent, "models/monsters/soldier/tris.md2");
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
+	sm_LoadModel(&g_studioModel, "data/scientist/Scientist.mdl");
+	sm_PostLoadModel(&g_studioModel, "data/scientist/Scientist.mdl");
+	g_viewerSettings.speedScale = 1.0f;
 
 	return 1;
 }
 
 void cl_render(void)
 {
+	sm_DrawModel(&g_studioModel);
 	cl_model_render(&ent);
 	particle_render();
 }

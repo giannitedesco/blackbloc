@@ -18,6 +18,9 @@ bin_PROGRAMS = blackbloc
 
 blackbloc_LDADD = -lpng @MATHLIB@ @SDL_LIBS@
 blackbloc_SOURCES = \
+	studio_utils.c \
+	studio_render.c \
+	mathlib.c \
 	md2_render.c \
 	gl_render.c \
 	sdl_mouse.c \
