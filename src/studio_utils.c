@@ -10,9 +10,16 @@
 // updates:
 // 1-4-99	fixed file texture load and file read bug
 
+/* TODO:
+ *  o Fix endian bugs
+ *  o Fix error checking
+ *  o Integrate with generic model loader
+ *  o Use gfile
+*/
+
 ////////////////////////////////////////////////////////////////////////
+#include <blackbloc.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -175,8 +182,11 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 
 	// load the model
 	fp = fopen(modelname, "rb");
-	if ( fp == NULL)
+	if ( fp == NULL) {
+		con_printf("studio: %s: %s\n",
+				modelname, load_err(NULL));
 		return 0;
+	}
 
 	fseek(fp, 0, SEEK_END);
 	size = ftell(fp);
@@ -184,6 +194,8 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 
 	buffer = malloc(size);
 	if (buffer == NULL ) {
+		con_printf("studio: %s: malloc(): %s\n",
+				modelname, load_err(NULL));
 		fclose (fp);
 		return 0;
 	}
@@ -198,12 +210,14 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 	if (strncmp ((const char *) buffer, "IDST", 4) &&
 		strncmp ((const char *) buffer, "IDSQ", 4))
 	{
+		con_printf("studio: %s: Bad magic\n", modelname);
 		free (buffer);
 		return 0;
 	}
 
 	if (!strncmp ((const char *) buffer, "IDSQ", 4) && !sm->m_pstudiohdr)
 	{
+		con_printf("studio: %s: IDST expected\n", modelname);
 		free (buffer);
 		return 0;
 	}
@@ -221,8 +235,10 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 
 	// UNDONE: free texture memory
 
-	if (!sm->m_pstudiohdr)
+	if (!sm->m_pstudiohdr) {
 		sm->m_pstudiohdr = (studiohdr_t *)buffer;
+		con_printf("studio: %s loaded OK\n", sm->m_pstudiohdr->name);
+	}
 
 	return (studiohdr_t *)buffer;
 }
