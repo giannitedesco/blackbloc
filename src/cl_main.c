@@ -59,8 +59,8 @@ int cl_init(void)
 	cl_model_load(&ent, "models/monsters/soldier/tris.md2");
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
-	sm_LoadModel(&g_studioModel, "data/scientist/Scientist.mdl");
-	sm_PostLoadModel(&g_studioModel, "data/scientist/Scientist.mdl");
+	sm_LoadModel(&g_studioModel, "data/scientist/scientist.mdl");
+	sm_PostLoadModel(&g_studioModel, "data/scientist/scientist.mdl");
 	g_viewerSettings.speedScale = 1.0f;
 
 	return 1;

@@ -1,15 +1,20 @@
 Things to do
 ------------
- o MD5 model support
+Characters:
+ o half-life studio model support
  o Model close method
- o Send frame updates from server
+ o New character models + kinematics
+ o Shaders for details
+
+World:
+ o world maps
+ o Collision model
+
+Infrastructure:
  o Mipmap support for textures
+ o Re-do console and HUD (render to texture?)
  o Screenshots
- o Re-do console and HUD
- o Collision detection with world
- o Particle effects
- o Atmospherics
- o SkyBox
+ o gfile updates
 
 Frustum Culling
 ---------------

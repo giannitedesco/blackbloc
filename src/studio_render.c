@@ -34,7 +34,7 @@ vec3_t	g_lightcolor;
 
 static int	g_smodels_total;		// cookie
 
-static float	g_bonetransform[MAXSTUDIOBONES][3][4];	// bone transformation matrix
+static vec_t	g_bonetransform[MAXSTUDIOBONES][3][4];	// bone transformation matrix
 
 static int	g_chrome[MAXSTUDIOVERTS][2];	// texture coords for surface normals
 static int	g_chromeage[MAXSTUDIOBONES];	// last time chrome vectors were updated
@@ -47,9 +47,9 @@ void sm_CalcBoneAdj(struct studio_model *sm)
 {
 	int					i, j;
 	float				value;
-	mstudiobonecontroller_t *pbonecontroller;
+	struct studio_bonecontroller *pbonecontroller;
 	
-	pbonecontroller = (mstudiobonecontroller_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
 
 	for (j = 0; j < sm->m_pstudiohdr->numbonecontrollers; j++)
 	{
@@ -92,12 +92,12 @@ void sm_CalcBoneAdj(struct studio_model *sm)
 }
 
 
-void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, mstudiobone_t *pbone, mstudioanim_t *panim, float *q )
+void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *q )
 {
 	int					j, k;
 	vec4_t				q1, q2;
 	vec3_t				angle1, angle2;
-	mstudioanimvalue_t	*panimvalue;
+	struct studio_animvalue	*panimvalue;
 
 	for (j = 0; j < 3; j++)
 	{
@@ -107,7 +107,7 @@ void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, mstudiob
 		}
 		else
 		{
-			panimvalue = (mstudioanimvalue_t *)((uint8_t *)panim + panim->offset[j+3]);
+			panimvalue = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j+3]);
 			k = frame;
 			while (panimvalue->num.total <= k)
 			{
@@ -167,17 +167,17 @@ void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, mstudiob
 }
 
 
-void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, mstudiobone_t *pbone, mstudioanim_t *panim, float *pos )
+void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *pos )
 {
 	int					j, k;
-	mstudioanimvalue_t	*panimvalue;
+	struct studio_animvalue	*panimvalue;
 
 	for (j = 0; j < 3; j++)
 	{
 		pos[j] = pbone->value[j]; // default;
 		if (panim->offset[j] != 0)
 		{
-			panimvalue = (mstudioanimvalue_t *)((uint8_t *)panim + panim->offset[j]);
+			panimvalue = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j]);
 			
 			k = frame;
 			// find span of values that includes the frame we want
@@ -220,11 +220,11 @@ void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, mstudiobo
 }
 
 
-void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, mstudioseqdesc_t *pseqdesc, mstudioanim_t *panim, float f )
+void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, struct studio_seqdesc *pseqdesc, struct studio_anim *panim, float f )
 {
 	int					i;
 	int					frame;
-	mstudiobone_t		*pbone;
+	struct studio_bone		*pbone;
 	float				s;
 
 	frame = (int)f;
@@ -233,7 +233,7 @@ void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, mstudio
 	// add in programatic controllers
 	sm_CalcBoneAdj(sm);
 
-	pbone		= (mstudiobone_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
+	pbone		= (struct studio_bone *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
 	for (i = 0; i < sm->m_pstudiohdr->numbones; i++, pbone++, panim++) 
 	{
 		sm_CalcBoneQuaternion(sm, frame, s, pbone, panim, q[i] );
@@ -249,17 +249,17 @@ void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, mstudio
 }
 
 
-mstudioanim_t * sm_GetAnim(struct studio_model *sm,  mstudioseqdesc_t *pseqdesc )
+struct studio_anim * sm_GetAnim(struct studio_model *sm,  struct studio_seqdesc *pseqdesc )
 {
-	mstudioseqgroup_t	*pseqgroup;
-	pseqgroup = (mstudioseqgroup_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqgroupindex) + pseqdesc->seqgroup;
+	struct studio_seqgroup	*pseqgroup;
+	pseqgroup = (struct studio_seqgroup *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqgroupindex) + pseqdesc->seqgroup;
 
 	if (pseqdesc->seqgroup == 0)
 	{
-		return (mstudioanim_t *)((uint8_t *)sm->m_pstudiohdr + pseqgroup->data + pseqdesc->animindex);
+		return (struct studio_anim *)((uint8_t *)sm->m_pstudiohdr + pseqgroup->data + pseqdesc->animindex);
 	}
 
-	return (mstudioanim_t *)((uint8_t *)sm->m_panimhdr[pseqdesc->seqgroup] + pseqdesc->animindex);
+	return (struct studio_anim *)((uint8_t *)sm->m_panimhdr[pseqdesc->seqgroup] + pseqdesc->animindex);
 }
 
 
@@ -293,8 +293,8 @@ void sm_AdvanceFrame(struct studio_model *sm,  float dt )
 	if (!sm->m_pstudiohdr)
 		return;
 
-	mstudioseqdesc_t	*pseqdesc;
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
+	struct studio_seqdesc	*pseqdesc;
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
 
 	if (dt > 0.1)
 		dt = 0.1f;
@@ -320,8 +320,8 @@ int sm_SetFrame(struct studio_model *sm,  int nFrame )
 	if (!sm->m_pstudiohdr)
 		return 0;
 
-	mstudioseqdesc_t	*pseqdesc;
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
+	struct studio_seqdesc	*pseqdesc;
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
 
 	sm->m_frame = nFrame;
 
@@ -343,9 +343,9 @@ void sm_SetUpBones (struct studio_model *sm)
 {
 	int					i;
 
-	mstudiobone_t		*pbones;
-	mstudioseqdesc_t	*pseqdesc;
-	mstudioanim_t		*panim;
+	struct studio_bone		*pbones;
+	struct studio_seqdesc	*pseqdesc;
+	struct studio_anim		*panim;
 
 	static vec3_t		pos[MAXSTUDIOBONES];
 	float				bonematrix[3][4];
@@ -363,7 +363,7 @@ void sm_SetUpBones (struct studio_model *sm)
 		sm->m_sequence = 0;
 	}
 
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
 
 	panim = sm_GetAnim(sm, pseqdesc );
 	sm_CalcRotations(sm, pos, q, pseqdesc, panim, sm->m_frame );
@@ -394,7 +394,7 @@ void sm_SetUpBones (struct studio_model *sm)
 		}
 	}
 
-	pbones = (mstudiobone_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
+	pbones = (struct studio_bone *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
 
 	for (i = 0; i < sm->m_pstudiohdr->numbones; i++) {
 		QuaternionMatrix( q[i], bonematrix );
@@ -548,12 +548,12 @@ void sm_SetupModel (struct studio_model *sm, int bodypart )
 		bodypart = 0;
 	}
 
-	mstudiobodyparts_t   *pbodypart = (mstudiobodyparts_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + bodypart;
+	struct studio_bodypart   *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + bodypart;
 
 	index = sm->m_bodynum / pbodypart->base;
 	index = index % pbodypart->nummodels;
 
-	sm->m_pmodel = (mstudiomodel_t *)((uint8_t *)sm->m_pstudiohdr + pbodypart->modelindex) + index;
+	sm->m_pmodel = (struct studio_dmodel *)((uint8_t *)sm->m_pstudiohdr + pbodypart->modelindex) + index;
 }
 
 
@@ -628,7 +628,7 @@ void sm_DrawModel(struct studio_model *sm)
 	// draw bones
 	if (g_viewerSettings.showBones && !g_viewerSettings.use3dfx)
 	{
-		mstudiobone_t *pbones = (mstudiobone_t *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
+		struct studio_bone *pbones = (struct studio_bone *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
 		glDisable (GL_TEXTURE_2D);
 		glDisable (GL_DEPTH_TEST);
 
@@ -671,7 +671,7 @@ void sm_DrawModel(struct studio_model *sm)
 		glDisable (GL_DEPTH_TEST);
 		for (i = 0; i < sm->m_pstudiohdr->numattachments; i++)
 		{
-			mstudioattachment_t *pattachments = (mstudioattachment_t *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->attachmentindex);
+			struct studio_attachment *pattachments = (struct studio_attachment *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->attachmentindex);
 			vec3_t v[4];
 			VectorTransform (pattachments[i].org, g_bonetransform[pattachments[i].bone], v[0]);
 			VectorTransform (pattachments[i].vectors[0], g_bonetransform[pattachments[i].bone], v[1]);
@@ -721,7 +721,7 @@ void sm_DrawModel(struct studio_model *sm)
 
 		for (i = 0; i < sm->m_pstudiohdr->numhitboxes; i++)
 		{
-			mstudiobbox_t *pbboxes = (mstudiobbox_t *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
+			struct studio_bbox *pbboxes = (struct studio_bbox *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
 			vec3_t v[8], v2[8], bbmin, bbmax;
 
 			VectorCopy (pbboxes[i].bbmin, bbmin);
@@ -783,12 +783,12 @@ void sm_DrawModel(struct studio_model *sm)
 void sm_DrawPoints (struct studio_model *sm)
 {
 	int					i, j;
-	mstudiomesh_t		*pmesh;
+	struct studio_mesh		*pmesh;
 	uint8_t				*pvertbone;
 	uint8_t				*pnormbone;
 	vec3_t				*pstudioverts;
 	vec3_t				*pstudionorms;
-	mstudiotexture_t	*ptexture;
+	struct studio_texture	*ptexture;
 	float 				*av;
 	float				*lv;
 	float				lv_tmp;
@@ -796,9 +796,9 @@ void sm_DrawPoints (struct studio_model *sm)
 
 	pvertbone = ((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->vertinfoindex);
 	pnormbone = ((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->norminfoindex);
-	ptexture = (mstudiotexture_t *)((uint8_t *)sm->m_ptexturehdr + sm->m_ptexturehdr->textureindex);
+	ptexture = (struct studio_texture *)((uint8_t *)sm->m_ptexturehdr + sm->m_ptexturehdr->textureindex);
 
-	pmesh = (mstudiomesh_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->meshindex);
+	pmesh = (struct studio_mesh *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->meshindex);
 
 	pstudioverts = (vec3_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->vertindex);
 	pstudionorms = (vec3_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->normindex);
@@ -850,7 +850,7 @@ void sm_DrawPoints (struct studio_model *sm)
 		float s, t;
 		short		*ptricmds;
 
-		pmesh = (mstudiomesh_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->meshindex) + j;
+		pmesh = (struct studio_mesh *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->meshindex) + j;
 		ptricmds = (short *)((uint8_t *)sm->m_pstudiohdr + pmesh->triindex);
 
 		s = 1.0/(float)ptexture[pskinref[pmesh->skinref]].width;

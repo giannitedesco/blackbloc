@@ -94,6 +94,13 @@ static inline const char *get_err(void)
 	return strerror(errno);
 }
 
+static inline const char *load_err(const char *msg)
+{
+	if ( errno == 0 && msg )
+		return msg;
+	return strerror(errno);
+}
+
 void con_printf(const char *fmt, ...);
 
 #endif /* __BLACKBLOC_HEADER_INCLUDED__ */

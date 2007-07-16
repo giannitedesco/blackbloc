@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////
 #include <blackbloc.h>
 #include <stdio.h>
+#include <limits.h>
 #include <string.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -41,7 +42,7 @@ static int g_texnum = 3;
 
 
 void sm_UploadTexture(struct studio_model *sm,
-			mstudiotexture_t *ptexture,
+			struct studio_texture *ptexture,
 			uint8_t *data, uint8_t *pal, int name)
 {
 	// unsigned *in, int inwidth, int inheight, unsigned *out,  int outwidth, int outheight;
@@ -167,14 +168,14 @@ void sm_FreeModel(struct studio_model *sm)
 
 
 
-studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
+struct studio_hdr *sm_LoadModel(struct studio_model *sm, char *modelname)
 {
 	FILE *fp;
 	long size;
 	void *buffer;
 	uint8_t	*pin;
-	studiohdr_t *phdr;
-	mstudiotexture_t *ptexture;
+	struct studio_hdr *phdr;
+	struct studio_texture *ptexture;
 	int i;
 
 	if (!modelname)
@@ -204,8 +205,8 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 	fclose(fp);
 
 	pin = (uint8_t *)buffer;
-	phdr = (studiohdr_t *)pin;
-	ptexture = (mstudiotexture_t *)(pin + phdr->textureindex);
+	phdr = (struct studio_hdr *)pin;
+	ptexture = (struct studio_texture *)(pin + phdr->textureindex);
 
 	if (strncmp ((const char *) buffer, "IDST", 4) &&
 		strncmp ((const char *) buffer, "IDSQ", 4))
@@ -236,11 +237,11 @@ studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname)
 	// UNDONE: free texture memory
 
 	if (!sm->m_pstudiohdr) {
-		sm->m_pstudiohdr = (studiohdr_t *)buffer;
+		sm->m_pstudiohdr = (struct studio_hdr *)buffer;
 		con_printf("studio: %s loaded OK\n", sm->m_pstudiohdr->name);
 	}
 
-	return (studiohdr_t *)buffer;
+	return (struct studio_hdr *)buffer;
 }
 
 
@@ -250,9 +251,10 @@ int sm_PostLoadModel(struct studio_model *sm, char *modelname)
 	int n, i;
 
 	// preload textures
+	con_printf("%i textures\n", sm->m_pstudiohdr->numtextures);
 	if (sm->m_pstudiohdr->numtextures == 0)
 	{
-		char texturename[256];
+		char texturename[PATH_MAX];
 
 		strcpy(texturename, modelname);
 		strcpy(&texturename[strlen(texturename) - 4], "T.mdl");
@@ -391,9 +393,9 @@ int sm_SetSequence(struct studio_model *sm, int iSequence)
 
 void sm_ExtractBbox(struct studio_model *sm, float *mins, float *maxs)
 {
-	mstudioseqdesc_t	*pseqdesc;
+	struct studio_seqdesc	*pseqdesc;
 
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
 	
 	mins[0] = pseqdesc[ sm->m_sequence ].bbmin[0];
 	mins[1] = pseqdesc[ sm->m_sequence ].bbmin[1];
@@ -408,9 +410,9 @@ void sm_ExtractBbox(struct studio_model *sm, float *mins, float *maxs)
 
 void sm_GetSequenceInfo(struct studio_model *sm, float *pflFrameRate, float *pflGroundSpeed)
 {
-	mstudioseqdesc_t	*pseqdesc;
+	struct studio_seqdesc	*pseqdesc;
 
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + (int)sm->m_sequence;
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + (int)sm->m_sequence;
 
 	if (pseqdesc->numframes > 1)
 	{
@@ -432,7 +434,7 @@ float sm_SetController(struct studio_model *sm, int iController, float flValue)
 	if (!sm->m_pstudiohdr)
 		return 0.0f;
 
-	mstudiobonecontroller_t	*pbonecontroller = (mstudiobonecontroller_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	struct studio_bonecontroller	*pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
 
 	// find first controller that matches the index
 	int i;
@@ -486,7 +488,7 @@ float sm_SetMouth(struct studio_model *sm, float flValue)
 	if (!sm->m_pstudiohdr)
 		return 0.0f;
 
-	mstudiobonecontroller_t	*pbonecontroller = (mstudiobonecontroller_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	struct studio_bonecontroller	*pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
 
 	// find first controller that matches the mouth
 	for (i = 0; i < sm->m_pstudiohdr->numbonecontrollers; i++, pbonecontroller++)
@@ -531,12 +533,12 @@ float sm_SetMouth(struct studio_model *sm, float flValue)
 
 float sm_SetBlending(struct studio_model *sm, int iBlender, float flValue)
 {
-	mstudioseqdesc_t	*pseqdesc;
+	struct studio_seqdesc	*pseqdesc;
 
 	if (!sm->m_pstudiohdr)
 		return 0.0f;
 
-	pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + (int)sm->m_sequence;
+	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + (int)sm->m_sequence;
 
 	if (pseqdesc->blendtype[iBlender] == 0)
 		return flValue;
@@ -577,7 +579,7 @@ int sm_SetBodygroup(struct studio_model *sm, int iGroup, int iValue)
 	if (iGroup > sm->m_pstudiohdr->numbodyparts)
 		return -1;
 
-	mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + iGroup;
+	struct studio_bodypart *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + iGroup;
 
 	int iCurrent = (sm->m_bodynum / pbodypart->base) % pbodypart->nummodels;
 
@@ -618,7 +620,7 @@ void sm_scaleMeshes(struct studio_model *sm, float scale)
 	int tmp = sm->m_bodynum;
 	for (i = 0; i < sm->m_pstudiohdr->numbodyparts; i++)
 	{
-		mstudiobodyparts_t *pbodypart = (mstudiobodyparts_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + i;
+		struct studio_bodypart *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + i;
 		for (j = 0; j < pbodypart->nummodels; j++)
 		{
 			sm_SetBodygroup(sm, i, j);
@@ -634,7 +636,7 @@ void sm_scaleMeshes(struct studio_model *sm, float scale)
 	sm->m_bodynum = tmp;
 
 	// scale complex hitboxes
-	mstudiobbox_t *pbboxes = (mstudiobbox_t *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
+	struct studio_bbox *pbboxes = (struct studio_bbox *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
 	for (i = 0; i < sm->m_pstudiohdr->numhitboxes; i++)
 	{
 		VectorScale (pbboxes[i].bbmin, scale, pbboxes[i].bbmin);
@@ -642,7 +644,7 @@ void sm_scaleMeshes(struct studio_model *sm, float scale)
 	}
 
 	// scale bounding boxes
-	mstudioseqdesc_t *pseqdesc = (mstudioseqdesc_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
+	struct studio_seqdesc *pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
 	for (i = 0; i < sm->m_pstudiohdr->numseq; i++)
 	{
 		VectorScale (pseqdesc[i].bbmin, scale, pseqdesc[i].bbmin);
@@ -658,7 +660,7 @@ void sm_scaleBones(struct studio_model *sm, float scale)
 	if (!sm->m_pstudiohdr)
 		return;
 
-	mstudiobone_t *pbones = (mstudiobone_t *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
+	struct studio_bone *pbones = (struct studio_bone *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->boneindex);
 	for (i = 0; i < sm->m_pstudiohdr->numbones; i++)
 	{
 		for (j = 0; j < 3; j++)

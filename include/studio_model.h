@@ -36,32 +36,32 @@ struct studio_model {
 	unsigned int 	m_owntexmodel;	// do we have a modelT.mdl ?
 
 	// internal data
-	studiohdr_t	*m_pstudiohdr;
-	mstudiomodel_t	*m_pmodel;
-
-	studiohdr_t	*m_ptexturehdr;
-	studiohdr_t	*m_panimhdr[32];
-
 	vec4_t		m_adj;	// FIX: non persistant, make static
+
+	struct studio_hdr	*m_pstudiohdr;
+	struct studio_dmodel	*m_pmodel;
+
+	struct studio_hdr 	*m_ptexturehdr;
+	struct studio_hdr 	*m_panimhdr[32];
 };
 
-static inline studiohdr_t *sm_getStudioHeader(struct studio_model *sm)
+static inline struct studio_hdr *sm_getStudioHeader(struct studio_model *sm)
 {
 	return sm->m_pstudiohdr;
 }
 
-static inline studiohdr_t *sm_getTextureHeader(struct studio_model *sm)
+static inline struct studio_hdr *sm_getTextureHeader(struct studio_model *sm)
 {
 	return sm->m_ptexturehdr;
 }
 
-static inline studiohdr_t *sm_getAnimHeader(struct studio_model *sm, int i)
+static inline struct studio_hdr *sm_getAnimHeader(struct studio_model *sm, int i)
 {
 	return sm->m_panimhdr[i];
 }
 
 void sm_FreeModel(struct studio_model *sm);
-studiohdr_t *sm_LoadModel(struct studio_model *sm, char *modelname);
+struct studio_hdr *sm_LoadModel(struct studio_model *sm, char *modelname);
 int sm_PostLoadModel(struct studio_model *sm, char *modelname);
 int sm_SaveModel(struct studio_model *sm, char *modelname);
 void sm_DrawModel(struct studio_model *sm);
@@ -78,7 +78,7 @@ void sm_GetSequenceInfo(struct studio_model *sm,
 			float *pflGroundSpeed);
 
 void sm_UploadTexture(struct studio_model *sm,
-			mstudiotexture_t *ptexture,
+			struct studio_texture *ptexture,
 			uint8_t *data, uint8_t *pal,
 			int name);
 
@@ -94,15 +94,15 @@ void sm_scaleBones(struct studio_model *sm, float scale);
 #if 1
 void sm_CalcBoneAdj(struct studio_model *sm);
 void sm_CalcBoneQuaternion(struct studio_model *sm,
-			int frame, float s, mstudiobone_t *pbone,
-			mstudioanim_t *panim, float *q);
+			int frame, float s, struct studio_bone *pbone,
+			struct studio_anim *panim, float *q);
 void sm_CalcBonePosition(struct studio_model *sm,
-			int frame, float s, mstudiobone_t *pbone,
-			mstudioanim_t *panim, float *pos);
+			int frame, float s, struct studio_bone *pbone,
+			struct studio_anim *panim, float *pos);
 void sm_CalcRotations(struct studio_model *sm,
-			vec3_t *pos, vec4_t *q, mstudioseqdesc_t *pseqdesc,
-			mstudioanim_t *panim, float f);
-mstudioanim_t *sm_GetAnim(struct studio_model *sm, mstudioseqdesc_t *pseqdesc);
+			vec3_t *pos, vec4_t *q, struct studio_seqdesc *pseqdesc,
+			struct studio_anim *panim, float f);
+struct studio_anim *sm_GetAnim(struct studio_model *sm, struct studio_seqdesc *pseqdesc);
 void sm_SlerpBones(struct studio_model *sm,
 			vec4_t q1[], vec3_t pos1[],
 			vec4_t q2[], vec3_t pos2[], float s);
