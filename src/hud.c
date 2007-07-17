@@ -46,9 +46,15 @@ static int hud_x;
 static int hud_y;
 static int ofs;
 
-static int showcon=0;
+static int showcon = 0;
 
-static inline void hud_char(struct image *i, int sz, int x, int y, int num)
+#define HUD_ALPHA (0.75)
+vector_t hud_col;
+vector_t con_col;
+
+static inline void hud_char(struct image *i,
+				vector_t color,
+				int sz, int x, int y, int num)
 {
 	int row,col;
 	float frow,fcol,size;
@@ -73,7 +79,10 @@ static inline void hud_char(struct image *i, int sz, int x, int y, int num)
 
 	img_bind(i);
 
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glBegin(GL_QUADS);
+
+	glColor4f(color[R], color[G], color[B], color[A]);
 
 	glTexCoord2f(fcol, frow);
 	glVertex2f(x, y);
@@ -86,6 +95,7 @@ static inline void hud_char(struct image *i, int sz, int x, int y, int num)
 
 	glTexCoord2f(fcol, frow+size);
 	glVertex2f(x, y+sz);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
 
 	glEnd();
 }
@@ -146,7 +156,6 @@ void con_render(void)
 
 	/* Draw console background */
 	img_bind(conback);
-	glEnable(GL_BLEND);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glBegin(GL_QUADS);
 
@@ -172,7 +181,7 @@ void con_render(void)
 			if ( !(chr=hudmap[y*con_x + x]) )
 				break;
 
-			hud_char(conchars, CON_CHAR, x, y, chr);
+			hud_char(conchars, con_col, CON_CHAR, x, y, chr);
 		}
 	}
 }
@@ -197,7 +206,7 @@ static void hud_printf(int x, int y, const char *fmt, ...)
 		case '\b':
 			break;
 		default:
-			hud_char(hudchars, HUD_CHAR, x++, y, *p);
+			hud_char(hudchars, hud_col, HUD_CHAR, x++, y, *p);
 		}
 	}
 	
@@ -206,27 +215,36 @@ static void hud_printf(int x, int y, const char *fmt, ...)
 
 void hud_render(void)
 {
+	hud_col[A] = HUD_ALPHA;
 	crosshair_render();
 
+	/* Print FPS with a greenish tinge */
+	hud_col[B] = 0.0;
+	hud_col[R] = 0.3;
 	hud_printf(hud_x - 10, 0, "%.2f fps", fps);
+	hud_col[B] = 1.0;
+	hud_col[R] = 1.0;
+
+	/* Print origin, use this method for any other static on-screen
+	 * information */
 	hud_printf(0, hud_y - 3, "origin=%.2f, %.2f, %.2f",
 			me.origin[X], me.origin[Y], me.origin[Z]);
 
 
 	/* Display last line of console */
 	if ( l_frames_left ) {
-		if ( l_frames_left > 10 ) {
-			glColor4f(1, 1, 1, 0.5);
-		}else{
-			glColor4f(1, 1, 1, (l_frames_left + lerp)/11.0);
+		/* Fade out effect */
+		if ( l_frames_left <= 10.0 ) {
+			hud_col[A] = (l_frames_left + (1.0-lerp))/10.0;
+			if ( hud_col[A] > 1.0 )
+				hud_col[A] = 1.0;
 		}
 		hud_printf(0, hud_y-1, lbuf);
-		glColor4f(1, 1, 1, 1);
+		hud_col[A] = HUD_ALPHA;
 	}
 
-	if ( iptr ) {
+	if ( iptr )
 		hud_printf(0, hud_y-2, ibuf);
-	}
 
 	con_render();
 }
@@ -280,6 +298,7 @@ end:
 	va_end(va);
 }
 
+/* Pre-initialise for con_printf() bufffers etc.. */
 int hud_init(void)
 {
 	con_x = vid_x / CON_CHAR;
@@ -296,9 +315,20 @@ int hud_init(void)
 	con_printf("\bWelcome to blackbloc\b\n"
 		"Copyright (c) 2003 Gianni Tedesco\n\n");
 
+	hud_col[R] = 1.0;
+	hud_col[G] = 1.0;
+	hud_col[B] = 1.0;
+	hud_col[A] = HUD_ALPHA;
+
+	con_col[R] = 1.0;
+	con_col[G] = 1.0;
+	con_col[B] = 1.0;
+	con_col[A] = 1.0;
+
 	return 0;
 }
 
+/* Initialise display part */
 int hud_init2(void)
 {
 	if ( !(conback=pcx_get_by_name("pics/conback.pcx")) )
