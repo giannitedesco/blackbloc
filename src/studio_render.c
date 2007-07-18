@@ -857,7 +857,7 @@ void sm_DrawPoints (struct studio_model *sm)
 		t = 1.0/(float)ptexture[pskinref[pmesh->skinref]].height;
 
 		//glBindTexture( GL_TEXTURE_2D, ptexture[pskinref[pmesh->skinref]].index );
-		glBindTexture( GL_TEXTURE_2D, pskinref[pmesh->skinref] + 3);
+		glBindTexture( GL_TEXTURE_2D, pskinref[pmesh->skinref] + 30);
 
 		if (ptexture[pskinref[pmesh->skinref]].flags & STUDIO_NF_CHROME)
 		{

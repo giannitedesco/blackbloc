@@ -22,6 +22,8 @@ STUDIO MODELS
 Studio models are position independent, so the cache manager can move them.
 ==============================================================================
 */
+#define STUDIO_IDST		('I'|'D'<<8|'S'<<16|('T'<<24))
+#define STUDIO_IDSQ		('I'|'D'<<8|'S'<<16|('Q'<<24))
 
 #define MAXSTUDIOTRIANGLES	20000	// TODO: tune this
 #define MAXSTUDIOVERTS		2048	// TODO: tune this
@@ -39,53 +41,53 @@ Studio models are position independent, so the cache manager can move them.
 #define MAXSTUDIOCONTROLLERS 8
 
 struct studio_hdr {
-	int32_t id;
-	int32_t version;
-	uint8_t name[64];
-	int32_t length;
-	vec3_t	eyeposition;	// ideal eye position
-	vec3_t	min;			// ideal movement hull size
-	vec3_t	max;			
-	vec3_t	bbmin;			// clipping bounding box
-	vec3_t	bbmax;		
+	uint32_t 	id;
+	uint32_t 	version;
+	uint8_t 	name[64];
+	uint32_t 	length;
+	vec3_t		eyeposition;	// ideal eye position
+	vec3_t		min;		// ideal movement hull size
+	vec3_t		max;			
+	vec3_t		bbmin;		// clipping bounding box
+	vec3_t		bbmax;		
 
-	int32_t	flags;
-	int32_t	numbones;			// bones
-	int32_t	boneindex;
+	uint32_t	flags;
+	uint32_t	numbones;	// bones
+	uint32_t	boneindex;
 
-	int32_t	numbonecontrollers;		// bone controllers
-	int32_t	bonecontrollerindex;
+	uint32_t	numbonecontrollers;	// bone controllers
+	uint32_t	bonecontrollerindex;
 
-	int32_t	numhitboxes;			// complex bounding boxes
-	int32_t	hitboxindex;			
+	uint32_t	numhitboxes;	// complex bounding boxes
+	uint32_t	hitboxindex;			
 	
-	int32_t	numseq;				// animation sequences
-	int32_t	seqindex;
+	uint32_t	numseq;		// animation sequences
+	uint32_t	seqindex;
 
-	int32_t	numseqgroups;		// demand loaded sequences
-	int32_t	seqgroupindex;
+	uint32_t	numseqgroups;	// demand loaded sequences
+	uint32_t	seqgroupindex;
 
-	int32_t	numtextures;		// raw textures
-	int32_t	textureindex;
-	int32_t	texturedataindex;
+	uint32_t	numtextures;	// raw textures
+	uint32_t	textureindex;
+	uint32_t	texturedataindex;
 
-	int32_t	numskinref;			// replaceable textures
-	int32_t	numskinfamilies;
-	int32_t	skinindex;
+	uint32_t	numskinref;	// replaceable textures
+	uint32_t	numskinfamilies;
+	uint32_t	skinindex;
 
-	int32_t	numbodyparts;		
-	int32_t	bodypartindex;
+	uint32_t	numbodyparts;		
+	uint32_t	bodypartindex;
 
-	int32_t	numattachments;		// queryable attachable points
-	int32_t	attachmentindex;
+	uint32_t	numattachments;	// queryable attachable points
+	uint32_t	attachmentindex;
 
-	int32_t	soundtable;
-	int32_t	soundindex;
-	int32_t	soundgroups;
-	int32_t	soundgroupindex;
+	uint32_t	soundtable;
+	uint32_t	soundindex;
+	uint32_t	soundgroups;
+	uint32_t	soundgroupindex;
 
-	int32_t	numtransitions;		// animation node to animation node transition graph
-	int32_t	transitionindex;
+	uint32_t	numtransitions;	// animation node to animation node transition graph
+	uint32_t	transitionindex;
 };
 
 // header for demand loaded sequence group data
@@ -100,11 +102,11 @@ struct studio_seqhdr {
 // bones
 struct studio_bone {
 	uint8_t name[32];	// bone name for symbolic links
-	int32_t	parent;		// parent bone
-	int32_t	flags;		// ??
-	int32_t	bonecontroller[6];	// bone controller index, -1 == none
-	float	value[6];	// default DoF values
-	float	scale[6];   // scale for delta DoF values
+	uint32_t	parent;		// parent bone
+	uint32_t	flags;		// ??
+	int32_t		bonecontroller[6]; // bone controller index, -1 == none
+	float		value[6];	// default DoF values
+	float		scale[6];   // scale for delta DoF values
 };
 
 
@@ -114,20 +116,20 @@ struct studio_bonecontroller {
 	int32_t	type;	// X, Y, Z, XR, YR, ZR, M
 	float	start;
 	float	end;
-	int32_t	rest;	// uint8_t index value at rest
-	int32_t	index;	// 0-3 user set controller, 4 mouth
+	int32_t	rest;	// char index value at rest
+	uint32_t	index;	// 0-3 user set controller, 4 mouth
 };
 
 // intersection boxes
 struct studio_bbox {
-	int32_t	bone;
-	int32_t	group;			// intersection group
+	uint32_t	bone;
+	uint32_t	group;			// intersection group
 	vec3_t	bbmin;		// bounding box
 	vec3_t	bbmax;		
 };
 
 // demand loaded sequence groups
-struct studio_seqgroup{
+struct studio_seqgroup {
 	uint8_t 	label[32];	// textual name
 	uint8_t 	name[64];	// file name
 	void 		*cache;		// cache index pointer
@@ -139,7 +141,7 @@ struct studio_seqdesc {
 	uint8_t	label[32];	// sequence label
 
 	float	fps;		// frames per second	
-	int32_t	flags;		// looping/non-looping flags
+	uint32_t	flags;		// looping/non-looping flags
 
 	int32_t	activity;
 	int32_t	actweight;
@@ -170,7 +172,7 @@ struct studio_seqdesc {
 	float	blendend[2];	// ending value
 	int32_t	blendparent;
 
-	int32_t	seqgroup;		// sequence group for demand loading
+	uint32_t	seqgroup;		// sequence group for demand loading
 
 	int32_t	entrynode;		// transition node at entry
 	int32_t	exitnode;		// transition node at exit
@@ -198,24 +200,31 @@ struct studio_pivot {
 // attachment
 struct studio_attachment {
 	uint8_t	name[32];
-	int32_t	type;
+	uint32_t	type;
 	int32_t	bone;
 	vec3_t	org;	// attachment point
 	vec3_t	vectors[3];
 };
 
 struct studio_anim {
-	int16_t offset[6];
+	uint16_t offset[6];
 };
 
 // animation frames
 struct studio_animvalue {
 	union {
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			uint8_t	valid;
 			uint8_t	total;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			uint8_t	total;
+			uint8_t	valid;
+#else
+#error Endian?!
+#endif
 		}num;
-		int16_t	value;
+		uint16_t value;
 	};
 };
 
@@ -224,9 +233,9 @@ struct studio_animvalue {
 // body part index
 struct studio_bodypart {
 	uint8_t		name[64];
-	int32_t		nummodels;
-	int32_t		base;
-	int32_t		modelindex; // index into models array
+	uint32_t		nummodels;
+	uint32_t		base;
+	uint32_t		modelindex; // index into models array
 };
 
 // skin info
@@ -245,22 +254,22 @@ struct studio_texture {
 struct studio_dmodel {
 	uint8_t		name[64];
 
-	int32_t		type;
+	uint32_t	type;
 
 	float		boundingradius;
 
-	int32_t		nummesh;
-	int32_t		meshindex;
+	uint32_t	nummesh;
+	uint32_t	meshindex;
 
-	int32_t		numverts;		// number of unique vertices
-	int32_t		vertinfoindex;	// vertex bone info
-	int32_t		vertindex;		// vertex vec3_t
-	int32_t		numnorms;		// number of unique surface normals
-	int32_t		norminfoindex;	// normal bone info
-	int32_t		normindex;		// normal vec3_t
+	uint32_t	numverts;		// number of unique vertices
+	uint32_t	vertinfoindex;	// vertex bone info
+	uint32_t	vertindex;		// vertex vec3_t
+	uint32_t	numnorms;		// number of unique surface normals
+	uint32_t	norminfoindex;	// normal bone info
+	uint32_t	normindex;		// normal vec3_t
 
-	int32_t		numgroups;		// deformation groups
-	int32_t		groupindex;
+	uint32_t	numgroups;		// deformation groups
+	uint32_t	groupindex;
 };
 
 // vec3_t	boundingbox[model][bone][2];	// complex intersection info

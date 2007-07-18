@@ -63,7 +63,6 @@ static inline struct studio_hdr *sm_getAnimHeader(struct studio_model *sm, int i
 void sm_FreeModel(struct studio_model *sm);
 struct studio_hdr *sm_LoadModel(struct studio_model *sm, char *modelname);
 int sm_PostLoadModel(struct studio_model *sm, char *modelname);
-int sm_SaveModel(struct studio_model *sm, char *modelname);
 void sm_DrawModel(struct studio_model *sm);
 void sm_AdvanceFrame(struct studio_model *sm, float dt);
 int sm_SetFrame(struct studio_model *sm, int nFrame);
@@ -77,11 +76,6 @@ void sm_GetSequenceInfo(struct studio_model *sm,
 			float *pflFrameRate,
 			float *pflGroundSpeed);
 
-void sm_UploadTexture(struct studio_model *sm,
-			struct studio_texture *ptexture,
-			uint8_t *data, uint8_t *pal,
-			int name);
-
 float sm_SetController(struct studio_model *sm, int iController, float flValue);
 float sm_SetMouth(struct studio_model *sm, float flValue);
 float sm_SetBlending(struct studio_model *sm, int iBlender, float flValue);
@@ -91,7 +85,7 @@ int sm_SetSkin(struct studio_model *sm, int iValue);
 void sm_scaleMeshes(struct studio_model *sm, float scale);
 void sm_scaleBones(struct studio_model *sm, float scale);
 
-#if 1
+#if 0
 void sm_CalcBoneAdj(struct studio_model *sm);
 void sm_CalcBoneQuaternion(struct studio_model *sm,
 			int frame, float s, struct studio_bone *pbone,
