@@ -102,7 +102,7 @@ struct studio_seqhdr {
 // bones
 struct studio_bone {
 	uint8_t name[32];	// bone name for symbolic links
-	uint32_t	parent;		// parent bone
+	int32_t	parent;		// parent bone
 	uint32_t	flags;		// ??
 	int32_t		bonecontroller[6]; // bone controller index, -1 == none
 	float		value[6];	// default DoF values
@@ -132,7 +132,7 @@ struct studio_bbox {
 struct studio_seqgroup {
 	uint8_t 	label[32];	// textual name
 	uint8_t 	name[64];	// file name
-	void 		*cache;		// cache index pointer
+	uint32_t 	cache;		// cache index pointer
 	int32_t		data;		// hack for group 0
 };
 
@@ -211,22 +211,25 @@ struct studio_anim {
 };
 
 // animation frames
+/* This structure is not byteswapped since I can't figure out how to get to
+ * each value only once...
+ */
 struct studio_animvalue {
 	union {
 		struct {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-			uint8_t	valid;
 			uint8_t	total;
+			uint8_t	valid;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-			uint8_t	total;
 			uint8_t	valid;
+			uint8_t	total;
 #else
 #error Endian?!
 #endif
 		}num;
 		uint16_t value;
 	};
-};
+}__attribute__((packed));
 
 
 
@@ -276,11 +279,11 @@ struct studio_dmodel {
 
 // meshes
 struct studio_mesh {
-	int32_t		numtris;
-	int32_t		triindex;
-	int32_t		skinref;
-	int32_t		numnorms;		// per mesh normals
-	int32_t		normindex;		// normal vec3_t
+	uint32_t		numtris;
+	uint32_t		triindex;
+	uint32_t		skinref;
+	uint32_t		numnorms;		// per mesh normals
+	uint32_t		normindex;		// normal vec3_t
 };
 
 // triangles

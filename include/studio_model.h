@@ -23,26 +23,27 @@ extern struct studio_model g_studioModel;
 extern ViewerSettings g_viewerSettings;
 
 struct studio_model {
+	struct studio_hdr	*m_pstudiohdr;
+	struct studio_hdr 	*m_ptexturehdr;
+	struct studio_hdr 	*m_panimhdr[32];
+
 	// entity settings
 	vec3_t		m_origin;
 	vec3_t		m_angles;	
-	int		m_sequence;	// sequence index
+	unsigned int	m_sequence;	// sequence index
 	float		m_frame;	// frame
-	int		m_bodynum;	// bodypart selection	
-	int		m_skinnum;	// skin group selection
-	uint8_t		m_controller[4];// bone controllers
-	uint8_t		m_blending[2];	// animation blending
+	unsigned int	m_bodynum;	// bodypart selection	
+	unsigned int 	m_skinnum;	// skin group selection
 	uint8_t		m_mouth;	// mouth position
 	unsigned int 	m_owntexmodel;	// do we have a modelT.mdl ?
 
 	// internal data
-	vec4_t		m_adj;	// FIX: non persistant, make static
+	/* FIXME: Need as many of these as bonecontrollers */
+	float m_adj[5];
+	uint8_t		m_controller[5];// bone controllers
+	uint8_t		m_blending[2];	// animation blending
 
-	struct studio_hdr	*m_pstudiohdr;
 	struct studio_dmodel	*m_pmodel;
-
-	struct studio_hdr 	*m_ptexturehdr;
-	struct studio_hdr 	*m_panimhdr[32];
 };
 
 static inline struct studio_hdr *sm_getStudioHeader(struct studio_model *sm)
@@ -61,26 +62,25 @@ static inline struct studio_hdr *sm_getAnimHeader(struct studio_model *sm, int i
 }
 
 void sm_FreeModel(struct studio_model *sm);
-struct studio_hdr *sm_LoadModel(struct studio_model *sm, char *modelname);
-int sm_PostLoadModel(struct studio_model *sm, char *modelname);
+int sm_LoadModel(struct studio_model *sm, char *modelname);
 void sm_DrawModel(struct studio_model *sm);
 void sm_AdvanceFrame(struct studio_model *sm, float dt);
 int sm_SetFrame(struct studio_model *sm, int nFrame);
 
 void sm_ExtractBbox(struct studio_model *sm, float *mins, float *maxs);
 
-int sm_SetSequence(struct studio_model *sm, int iSequence);
+int sm_SetSequence(struct studio_model *sm, unsigned int iSequence);
 int sm_GetSequence(struct studio_model *sm);
 
 void sm_GetSequenceInfo(struct studio_model *sm,
 			float *pflFrameRate,
 			float *pflGroundSpeed);
 
-float sm_SetController(struct studio_model *sm, int iController, float flValue);
+float sm_SetController(struct studio_model *sm, unsigned int iController, float flValue);
 float sm_SetMouth(struct studio_model *sm, float flValue);
 float sm_SetBlending(struct studio_model *sm, int iBlender, float flValue);
-int sm_SetBodygroup(struct studio_model *sm, int iGroup, int iValue);
-int sm_SetSkin(struct studio_model *sm, int iValue);
+int sm_SetBodygroup(struct studio_model *sm, unsigned int iGroup, unsigned int iValue);
+int sm_SetSkin(struct studio_model *sm, unsigned int iValue);
 
 void sm_scaleMeshes(struct studio_model *sm, float scale);
 void sm_scaleBones(struct studio_model *sm, float scale);
@@ -105,8 +105,6 @@ void sm_DrawPoints(struct studio_model *sm);
 void sm_Lighting(struct studio_model *sm,
 			float *lv, int bone, int flags, vec3_t normal);
 void sm_Chrome(struct studio_model *sm, int *chrome, int bone, vec3_t normal);
-void sm_SetupLighting(struct studio_model *sm);
-void sm_SetupModel(struct studio_model *sm, int bodypart);
 #endif
 
 

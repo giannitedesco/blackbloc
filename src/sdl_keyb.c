@@ -12,13 +12,12 @@
 /* ===== Key Binding Code ===== */
 static struct cl_bind binds[KEY_MAX];
 
-void sdl_keyb_bind(int k, int f, struct cl_cmd *c)
+void sdl_keyb_bind(int k, struct cl_cmd *c)
 {
 	if ( k < 0 || k >= KEY_MAX )
 		return;
 
 	binds[k].cmd = c;
-	binds[k].flags = f;
 }
 
 void sdl_keyb_unbind(int k)
@@ -57,6 +56,19 @@ static const char *keymap[KEY_MAX]={
 	[ SDLK_BACKQUOTE ] = "backquote",
 };
 
+void sdl_keyb_print(void)
+{
+	unsigned int i;
+	con_printf("Keyboard Bindings:\n");
+	for(i = 0; i < KEY_MAX; i++) {
+		if ( binds[i].cmd ) {
+			con_printf(" <%s> %s\n",
+				SDL_GetKeyName(i),
+				binds[i].cmd->name);
+		}
+	}
+}
+
 int sdl_keyb_code(const char *n)
 {
 	int i;
@@ -87,7 +99,7 @@ static void sdl_keyb_default(uint16_t k)
 	if ( !binds[key].cmd )
 		return;
 
-	if ( state || binds[key].flags )
+	if ( state || binds[key].cmd->name[0] == '+' )
 		binds[key].cmd->fn(state);
 }
 

@@ -22,7 +22,6 @@ struct cl_cmd {
 
 struct cl_bind {
 	struct cl_cmd *cmd;
-	unsigned int flags;
 };
 
 /* Client state, mainly rendering stuff */
@@ -33,6 +32,7 @@ extern int vid_x;
 extern int vid_y;
 extern int vid_depth;
 extern int vid_fullscreen;
+extern unsigned int vid_wireframe;
 extern float fps;
 extern float lerp;
 
@@ -47,7 +47,7 @@ int cl_cmd_bind(const char *k, const char *c);
 void cl_cmd_run(char *cmd);
 
 /* Keyboard binding API */
-void sdl_keyb_bind(int, int, struct cl_cmd *);
+void sdl_keyb_bind(int, struct cl_cmd *);
 void sdl_keyb_unbind(int);
 int sdl_keyb_code(const char *);
 

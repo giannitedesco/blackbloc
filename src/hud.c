@@ -48,7 +48,7 @@ static int ofs;
 
 static int showcon = 0;
 
-#define HUD_ALPHA (0.75)
+#define HUD_ALPHA (0.6)
 vector_t hud_col;
 vector_t con_col;
 
@@ -102,7 +102,7 @@ static inline void hud_char(struct image *i,
 
 void crosshair_render()
 {
-	int sz=32;
+	int sz = 32;
 	float xmin = (vid_x/2) - (sz/2);
 	float xmax = (vid_x/2) + (sz/2);
 	float ymin = (vid_y/2) - (sz/2);
@@ -139,10 +139,10 @@ void hud_toggle_console(void)
 {
 	if ( !showcon ) {
 		con_input_begin();
-		showcon=1;
+		showcon = 1;
 	}else{
 		con_input_end();
-		showcon=0;
+		showcon = 0;
 	}
 }
 
@@ -161,16 +161,16 @@ void con_render(void)
 
 	glColor4f(1,1,1,0.5);
 
-	glTexCoord2f(0, 0.5);
+	glTexCoord2f(0, 0.25);
 	glVertex2f(0, 0);
 
 	glTexCoord2f(0, 1);
-	glVertex2f(0, vid_y/2);
+	glVertex2f(0, (vid_y/4) * 3);
 
 	glTexCoord2f(1, 1);
-	glVertex2f(vid_x, vid_y/2);
+	glVertex2f(vid_x, (vid_y/4) * 3);
 
-	glTexCoord2f(1, 0.5);
+	glTexCoord2f(1, 0.25);
 	glVertex2f(vid_x, 0);
 	glEnd();
 
@@ -218,16 +218,9 @@ void hud_render(void)
 	hud_col[A] = HUD_ALPHA;
 	crosshair_render();
 
-	/* Print FPS with a greenish tinge */
-	hud_col[B] = 0.0;
-	hud_col[R] = 0.3;
-	hud_printf(hud_x - 10, 0, "%.2f fps", fps);
-	hud_col[B] = 1.0;
-	hud_col[R] = 1.0;
-
 	/* Print origin, use this method for any other static on-screen
 	 * information */
-	hud_printf(0, hud_y - 3, "origin=%.2f, %.2f, %.2f",
+	hud_printf(0, hud_y - 3, "X:%07.3f Y:%07.3f Z:%07.3f",
 			me.origin[X], me.origin[Y], me.origin[Z]);
 
 
@@ -247,6 +240,13 @@ void hud_render(void)
 		hud_printf(0, hud_y-2, ibuf);
 
 	con_render();
+
+	/* Print FPS with a greenish tinge */
+	hud_col[B] = 0.0;
+	hud_col[R] = 0.3;
+	hud_printf(hud_x - 10, 0, "%.2f fps", fps);
+	hud_col[B] = 1.0;
+	hud_col[R] = 1.0;
 }
 
 void hud_think(void)
@@ -302,7 +302,7 @@ end:
 int hud_init(void)
 {
 	con_x = vid_x / CON_CHAR;
-	con_y = (vid_y / CON_CHAR) / 2;
+	con_y = ((vid_y / CON_CHAR) / 4) * 3;
 
 	hud_x = vid_x / HUD_CHAR;
 	hud_y = vid_y / HUD_CHAR;
@@ -348,11 +348,17 @@ int hud_init2(void)
 
 void con_input_char(uint16_t k)
 {
-	int key = sdl_keyb_key(k);
+	int key;
+
+	key = sdl_keyb_key(k);
 
 	if ( !sdl_keyb_state(k) )
 		return;
 
+	/* Ignore mouse buttons */
+	if ( key > SDLK_LAST )
+		return;
+	
 	switch ( key ) {
 	case SDLK_BACKQUOTE:
 	case SDLK_ESCAPE:

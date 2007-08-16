@@ -8,49 +8,83 @@
 #include <teximage.h>
 #include <client.h>
 #include <particle.h>
+#include <list.h>
+
+struct particle {
+	/* required for rendering */
+	vector_t origin;
+	scalar_t radius;
+	pixel_t color;
+
+	/* virtual method table */
+	void (*dtor)(struct particle *);
+	void (*think)(struct particle *);
+
+	struct list_head list;
+};
 
 /* Particle texture (circle thing) */
 struct image ptexture;
 static uint8_t data[32][32][4];
 
 /* All particles in the world */
-static struct particle_head particles={
-	(struct particle *)&particles,
-	(struct particle *)&particles,
-};
+static LIST_HEAD(particles);
+
+static void p_source_think(struct particle *p)
+{
+}
+
+static struct particle *p_source(void)
+{
+	struct particle *ret;
+
+	ret = calloc(1, sizeof(*ret));
+	if ( ret == NULL )
+		return 0;
+	
+	ret->origin[X] = 0.0;
+	ret->origin[Y] = 0.0;
+	ret->origin[Z] = 0.0;
+
+	ret->color[R] = 0;
+	ret->color[G] = 0xff;
+	ret->color[B] = 0;
+	ret->color[A] = 0xff;
+
+	ret->radius = 10.0;
+
+	ret->think = p_source_think;
+	ret->dtor = free;
+
+	return ret;
+}
 
 /* Default particle deletion method */
-void p_vdtor(struct particle *p)
+static void p_vdtor(struct particle *p)
 {
 	free(p);
 }
 
 /* Default particle think method */
-void p_vthink(struct particle *p)
+static void p_vthink(struct particle *p)
 {
 	/* nop */
 }
 
-void particle_add(struct particle *p)
+static void particle_add(struct particle *p)
 {
-	if ( p->dtor==NULL )
-		p->dtor=p_vdtor;
+	if ( p->dtor == NULL )
+		p->dtor = p_vdtor;
 
-	if ( p->think==NULL )
-		p->think=p_vthink;
+	if ( p->think == NULL )
+		p->think = p_vthink;
 
-	p->next=particles.next;
-	p->prev=(struct particle *)&particles;
-	particles.next->prev=p;
-	particles.next=p;
+	list_add_tail(&p->list, &particles);
 }
 
-void particle_delete(struct particle *p)
+static void particle_delete(struct particle *p)
 {
-	p->prev->next=p->next;
-	p->next->prev=p->prev;
-	p->prev=NULL;
-	p->next=NULL;
+	list_del(&p->list);
 	p->dtor(p);
 }
 
@@ -91,7 +125,7 @@ static void particle_render_one(struct particle *p)
 
 void particle_render(void)
 {
-	struct particle *p=particles.next;
+	struct particle *p, *tmp;
 
 	glBindTexture(GL_TEXTURE_2D, ptexture.texnum);
 	glDepthMask(GL_FALSE);
@@ -99,10 +133,8 @@ void particle_render(void)
 	glBegin(GL_QUADS);
 
 	/* Render all particles */
-	while( p!=(struct particle *)&particles ) {
-		p=p->next;
-		particle_render_one(p->prev);
-	}
+	list_for_each_entry_safe(p, tmp, &particles, list)
+		particle_render_one(p);
 
 	/* Set alpha levels back */
 	glColor4ub(0xff, 0xff, 0xff, 0xff);
@@ -147,14 +179,16 @@ int particle_init(void)
 		}
 	}
 
-	ptexture.name="***particle***";
+	ptexture.name = "***particle***";
 	ptexture.s_pixels = (uint8_t *)data;
 	ptexture.s_width = 32;
 	ptexture.s_height = 32;
 
-	ptexture.upload=particle_upload;
-	ptexture.unload=particle_unload;
+	ptexture.upload = particle_upload;
+	ptexture.unload = particle_unload;
 	particle_upload(&ptexture);
+
+	//particle_add(p_source());
 
 	return 0;
 }

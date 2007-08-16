@@ -38,7 +38,6 @@ typedef struct
 	int renderMode;
 	float transparency;
 	unsigned int showBackground:1;
-	unsigned int showGround:1;
 	unsigned int showHitBoxes:1;
 	unsigned int showBones:1;
 	unsigned int showTexture:1;
@@ -59,22 +58,6 @@ typedef struct
 	// bodyparts and bonecontrollers
 	int submodels[32];
 	float controllers[8];
-
-	// fullscreen
-	int width, height;
-
-	// colors
-	float bgColor[4];
-	float lColor[4];
-	float gColor[4];
-
-	// misc
-	int textureLimit;
-
-	// only used for fullscreen mode
-	char modelFile[256];
-	char backgroundTexFile[256];
-	char groundTexFile[256];
 } ViewerSettings;
 
 extern ViewerSettings g_viewerSettings;

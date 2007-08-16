@@ -140,6 +140,7 @@ void md2_render(struct cl_ent *ent)
 	glCullFace(GL_FRONT);
 
 	img_bind(ent->skin);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
 	while(1) {
 		count = *order++;

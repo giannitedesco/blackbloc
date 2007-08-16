@@ -69,6 +69,8 @@ int main(int argc, char **argv)
 			cl_frame();
 		}else{
 			lerp = 1.0f - ((float)nextframe - now)/100.0f;
+			if ( lerp > 1.0 )
+				lerp = 1.0;
 		}
 
 		/* Render a scene */

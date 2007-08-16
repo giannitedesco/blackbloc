@@ -1,10 +1,20 @@
 Things to do
 ------------
+General:
+ o compiler.h for compiler specifics
+ o use inlines for bytesex.h
+ o support shift keys in console
+ o support args for commands (and binds)
+ o abstract SDL stuff a bit
+
 Characters:
  o half-life studio model support
- o Model close method
+   - fix endian bugs
+   - use gfile framework
+   - use model framework
+   - use texture framework
+ o Normal maps for details
  o New character models + kinematics
- o Shaders for details
 
 World:
  o world maps
@@ -12,13 +22,14 @@ World:
 
 Infrastructure:
  o Mipmap support for textures
- o Re-do console and HUD (render to texture?)
+ o Shader support
+ o Re-think console and HUD (render to texture?)
  o Screenshots
- o gfile updates
 
 Frustum Culling
 ---------------
  Frustum is 6 planes: 4 sides, near and far
  The dot-product of a point and a plane is the distance.
- If distance + radius > 0 then point is inside the plane.
  Radius is abs(the furthest extent)
+ If distance + radius > 0 then point is inside the plane.
+ If point is inside all 6 planes, job done

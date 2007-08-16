@@ -32,18 +32,13 @@ int cl_cmd_bind(const char *k, const char *c)
 		return 0;
 	}
 
-	if ( *c == '+' ) {
-		c++;
-		f = 1;
-	}
-
 	cmd = cl_cmd_by_name(c);
 	if ( cmd == NULL ) {
 		con_printf("Unkown command: \"%s\"\n", c);
 		return 0;
 	}
 
-	sdl_keyb_bind(i, f, cmd);
+	sdl_keyb_bind(i, cmd);
 	return 1;
 }
 
@@ -57,17 +52,40 @@ static void clcmd_quit(int s)
 	cl_alive = 0;
 }
 
+static void clcmd_wireframe(int s)
+{
+	vid_wireframe = !vid_wireframe;
+}
+
+static void clcmd_binds(int s)
+{
+	sdl_keyb_print();
+}
+
+static void clcmd_help(int s);
+
 /* List of all registered client commands */
 static struct cl_cmd command[]={
-	{clcmd_forwards, "forwards", "Walk forwards"},
-	{clcmd_backwards, "backwards", "Walk backwards"},
-	{clcmd_strafe_left, "strafe_left", "Strafe left"},
-	{clcmd_strafe_right, "strafe_right", "Strafe right"},
-	{clcmd_jump, "jump", "Jump"},
-	{clcmd_crouch, "crouch", "Crouch"},
+	{clcmd_wireframe, "wireframe", "Toggle wireframe rendering"},
+	{clcmd_binds, "binds", "Show key bindings"},
+	{clcmd_forwards, "+forwards", "Walk forwards"},
+	{clcmd_backwards, "+backwards", "Walk backwards"},
+	{clcmd_strafe_left, "+strafe_left", "Strafe left"},
+	{clcmd_strafe_right, "+strafe_right", "Strafe right"},
+	{clcmd_jump, "+jump", "Jump"},
+	{clcmd_crouch, "+crouch", "Crouch"},
 	{clcmd_quit, "quit", "Exit the game"},
+	{clcmd_help, "help", "Print a list of commands"},
 	{clcmd_console, "console", "Toggle the console"},
 };
+
+static void clcmd_help(int s)
+{
+	unsigned int i;
+	con_printf("Command List:\n");
+	for(i = 0; i < sizeof(command)/sizeof(*command); i++)
+		con_printf(" %s: %s\n", command[i].name, command[i].help);
+}
 
 /* Helper for qsort/bsearch */
 static int cmd_compar(const void *aa, const void *bb)

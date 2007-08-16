@@ -1,20 +1,20 @@
 #ifndef __BYTESEX_H
 #define __BYTESEX_H
 
-static inline __attribute__((const)) u_int16_t bswap16(u_int16_t x)
+static inline __attribute__((const)) uint16_t bswap16(uint16_t x)
 {
-	return ((u_int16_t)(
-		(((u_int16_t)(x) & (u_int16_t)0x00ffU) << 8) |
-	 	(((u_int16_t)(x) & (u_int16_t)0xff00U) >> 8) ));
+	return ((uint16_t)(
+		(((uint16_t)(x) & (uint16_t)0x00ffU) << 8) |
+	 	(((uint16_t)(x) & (uint16_t)0xff00U) >> 8) ));
 }
 
-static inline __attribute__((const)) u_int32_t bswap32(u_int32_t x)
+static inline __attribute__((const)) uint32_t bswap32(uint32_t x)
 {
-	return ((u_int32_t)(
-		(((u_int32_t)(x) & (u_int32_t)0x000000ffUL) << 24) |
-		(((u_int32_t)(x) & (u_int32_t)0x0000ff00UL) <<  8) |
-		(((u_int32_t)(x) & (u_int32_t)0x00ff0000UL) >>  8) |
-		(((u_int32_t)(x) & (u_int32_t)0xff000000UL) >> 24) ));
+	return ((uint32_t)(
+		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) |
+		(((uint32_t)(x) & (uint32_t)0x0000ff00UL) <<  8) |
+		(((uint32_t)(x) & (uint32_t)0x00ff0000UL) >>  8) |
+		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ));
 }
 
 static inline __attribute__((const)) float bswapf(float x)

@@ -11,9 +11,9 @@
 #include <hud.h>
 #include <gl_render.h>
 
-#if 2
-int vid_x = 1024;
-int vid_y = 768;
+#if 1
+int vid_x = 1280;
+int vid_y = 854;
 int vid_depth = 32;
 int vid_fullscreen = 1;
 #else
@@ -22,6 +22,8 @@ int vid_y = 480;
 int vid_depth = 32;
 int vid_fullscreen = 0;
 #endif
+
+unsigned int vid_wireframe;
 
 /* Help us to setup the viewing frustum */
 static void gl_frustum(GLdouble fovy,
@@ -70,8 +72,15 @@ static void gl_3d(void)
 	glCullFace(GL_BACK);
 
 	/* Enable textures */
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_TEXTURE_2D);
+	if ( vid_wireframe ) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+	}else{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glEnable(GL_TEXTURE_2D);
+	}
 }
 
 /* Prepare OpenGL for 2d rendering */
@@ -90,6 +99,8 @@ static void gl_2d(void)
 
 	/* So we can wind in any direction */
 	glDisable(GL_CULL_FACE);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 /* Global blends are done here */

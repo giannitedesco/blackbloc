@@ -1,18 +1,21 @@
 /***
 *
 *	Copyright (c) 1998, Valve LLC. All rights reserved.
-*	
-*	This product contains software technology licensed from Id 
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
 *	All Rights Reserved.
 *
 ****/
 // updates:
 // 1-4-99	fixed file texture load and file read bug
+// 2007-07-20   fixed for big endian platforms (gianni@scaramanga.co.uk)
 
 /* TODO:
- *  o Fix endian bugs
- *  o Fix error checking
+ *  o Fix wierd animation bug
+ *  o Fix render rotation thing
+ *  o Better error checking
+ *  o Fix array sizing stuff by sizing arrays based on whats in the model file
  *  o Integrate with generic model loader
  *  o Use gfile
 */
@@ -44,16 +47,11 @@ static void le_vec3(vec3_t x)
 ViewerSettings g_viewerSettings;
 struct studio_model g_studioModel;
 static unsigned int bFilterTextures = 1;
-
+static int g_texnum = 30;
 
 ////////////////////////////////////////////////////////////////////////
 
-static int g_texnum = 30;
-
-
-
-static void sm_UploadTexture(struct studio_model *sm,
-			struct studio_texture *ptexture,
+static void UploadTexture(struct studio_texture *ptexture,
 			uint8_t *data, uint8_t *pal, int name)
 {
 	// unsigned *in, int inwidth, int inheight, unsigned *out,  int outwidth, int outheight;
@@ -131,7 +129,7 @@ static void sm_UploadTexture(struct studio_model *sm,
 		}
 	}
 
-	glBindTexture(GL_TEXTURE_2D, name); //g_texnum);		
+	glBindTexture(GL_TEXTURE_2D, name); //g_texnum);
 	glTexImage2D(GL_TEXTURE_2D, 0, 3/*??*/, outwidth, outheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, bFilterTextures ? GL_LINEAR:GL_NEAREST);
@@ -177,19 +175,396 @@ void sm_FreeModel(struct studio_model *sm)
 	g_texnum = 3;
 }
 
-/* Byte swap the studio file, validating everything as we go.
+static int load_idsq(const char *fn, struct studio_hdr *h,
+			uint32_t grp, uint8_t *buf, size_t len)
+{
+	struct studio_seqdesc *s;
+	struct studio_seqgroup *g;
+	uint8_t *end;
+	uint32_t i;
+
+	if ( h->id != STUDIO_IDST ) {
+		con_printf("studio: %s: Bad IDSQ magic\n", fn);
+		return 0;
+	}
+
+	g = (void *)h + h->seqgroupindex;
+	g += grp;
+
+	if ( grp != 0 )
+		con_printf(" o IDSQ for group %u\n", grp);
+
+	s = (void *)h + h->seqindex;
+	for(i = 0; i < h->numseq; i++, s++) {
+		unsigned int j;
+		struct studio_anim *a;
+
+		if ( s->seqgroup != grp )
+			continue;
+
+		if ( grp == 0 ) {
+			a = (void *)h + g->data + s->animindex;
+			end = (void *)h + h->length;
+		}else{
+			a = (void *)(buf + s->animindex);
+			end = buf + len;
+		}
+
+		if ( (uint8_t *)(a + h->numbones) > end )
+			goto err;
+
+		if ( i == 13 )
+			con_printf(" o seq: %s blends=%u frames=%u\n",
+				s->label, s->numblends, s->numframes);
+		for(j = 0; j < h->numbones; j++) {
+			struct studio_animvalue *v;
+			unsigned int k;
+
+			//con_printf("   x Bone%u: ", j);
+			for(k = 0; k < 6; k++) {
+				swap16(a[j].offset[k]);
+				//con_printf("%u ", s->animindex * !!(a[j].offset[k]) + a[j].offset[k]);
+			}
+			//con_printf("\n");
+
+			/* FIXME: How to get at all animvalues? how do we
+			 * know where the end is?
+			 */
+		}
+	}
+
+	return 1;
+err:
+	con_printf("studio: %s: corrupt IDSQ data\n", fn);
+	return 0;
+}
+
+/* Byte swap the IDST file, validating everything as we go.
  * FIXME: Still not validating everything which is used to deref an array,
  * eg: bone indexes > numbones and so on...
  */
-static int swap_model(const char *fn, struct studio_hdr *h, size_t len)
+static int load_idst(const char *fn, struct studio_hdr *h, size_t len)
 {
 	uint8_t *buf = (uint8_t *)h;
-	uint8_t *end = h + len;
+	uint8_t *end = buf + len;
 	uint16_t *skin;
 	uint32_t i;
 
-	if ( len < sizeof(*h) )
+	if ( h->id != STUDIO_IDST ) {
+		con_printf("studio: %s: Bad IDST magic\n", fn);
+		return 0;
+	}
+
+	con_printf(" o %u bones, %u controllers\n",
+			h->numbones, h->numbonecontrollers);
+	con_printf(" o %u sequences, %u groups\n",
+		h->numseq, h->numseqgroups);
+	con_printf(" o %u hit boxes\n", h->numhitboxes);
+	con_printf(" o %u textures\n", h->numtextures);
+	con_printf(" o %u skins %u families\n",
+		h->numskinref, h->numskinfamilies);
+	con_printf(" o %u bodyparts, %u attachments\n",
+		h->numbodyparts, h->numattachments);
+
+	if ( h->numattachments ) {
+		struct studio_attachment *a =
+			(void *)(buf + h->attachmentindex);
+		if ( (uint8_t *)(a + h->numattachments) > end )
+			goto err;
+		for(i = 0; i < h->numattachments; i++) {
+			unsigned int j;
+			swap32(a[i].type);
+			swap32(a[i].bone);
+			swapvec3(a[i].org);
+			for(j = 0; j < 3; j++)
+				swapvec3(a[i].vectors[j]);
+			con_printf("  attach[%.2u]: type=%u bone=%i %s\n",
+				a[i].type, a[i].bone, a[i].name);
+		}
+	}
+
+	if ( h->numbones ) {
+		struct studio_bone *b = (void *)(buf + h->boneindex);
+		if ( (uint8_t *)(b + h->numbones) > end )
+			goto err;
+		for(i = 0; i < h->numbones; i++) {
+			uint32_t j;
+			swap32(b[i].parent);
+			swap32(b[i].flags);
+			for(j = 0; j < 6; j++) {
+				swap32(b[i].bonecontroller[j]);
+				swapfloat(b[i].value[j]);
+				swapfloat(b[i].scale[j]);
+			}
+			con_printf("  bone[%.2u]: parent=%i "
+				"flags=0x%x: %s\n", i,
+				b[i].parent, b[i].flags, b[i].name);
+		}
+	}
+
+	if ( h->numbonecontrollers > 5 )
 		goto err;
+
+	if ( h->numbonecontrollers ) {
+		struct studio_bonecontroller *c =
+				(void *)(buf + h->bonecontrollerindex);
+		if ( (uint8_t *)(c + h->numbones) > end )
+			goto err;
+		for(i = 0; i < h->numbonecontrollers; i++) {
+			swap32(c[i].bone);
+			swap32(c[i].type);
+			swapfloat(c[i].start);
+			swapfloat(c[i].end);
+			swap32(c[i].rest);
+			swap32(c[i].index);
+			con_printf("  controller[%.2u] bone=%i type=%i "
+					"index=%u\n",
+					i, c[i].bone, c[i].index, c[i].index);
+		}
+	}
+
+	if ( h->numhitboxes ) {
+		struct studio_bbox *x = (void *)(buf + h->hitboxindex);
+		if ( (uint8_t *)(x + h->numhitboxes) > end )
+			goto err;
+		for(i = 0; i < h->numhitboxes; i++) {
+			swap32(x[i].bone);
+			swap32(x[i].group);
+			swapvec3(x[i].bbmin);
+			swapvec3(x[i].bbmax);
+		}
+	}
+
+	if ( h->numseq ) {
+		struct studio_seqdesc *s = (void *)(buf + h->seqindex);
+		unsigned int j;
+		if ( (uint8_t *)(s + h->numseq) > end )
+			goto err;
+		for(i = 0; i < h->numseq; i++) {
+			swapfloat(s[i].fps);
+			swap32(s[i].flags);
+			swap32(s[i].activity);
+			swap32(s[i].actweight);
+			swap32(s[i].numevents);
+			swap32(s[i].eventindex);
+			swap32(s[i].numframes);
+			swap32(s[i].numpivots);
+			swap32(s[i].pivotindex);
+			swap32(s[i].motiontype);
+			swap32(s[i].motionbone);
+			swapvec3(s[i].linearmovement);
+			swap32(s[i].automoveposindex);
+			swap32(s[i].automoveangleindex);
+			swapvec3(s[i].bbmin);
+			swapvec3(s[i].bbmax);
+			swap32(s[i].numblends);
+			swap32(s[i].animindex);
+			for(j = 0; j < 2; j++) {
+				swap32(s[i].blendtype[j]);
+				swapfloat(s[i].blendstart[j]);
+				swapfloat(s[i].blendend[j]);
+			}
+			swap32(s[i].blendparent);
+			swap32(s[i].seqgroup);
+			swap32(s[i].entrynode);
+			swap32(s[i].exitnode);
+			swap32(s[i].nodeflags);
+			swap32(s[i].nextseq);
+
+			con_printf("  seq[%.2u]: grp%.2u %.1ffps %.1fs %s\n",
+				i, s[i].seqgroup, s[i].fps,
+				(float)s[i].numframes / s[i].fps,
+				s[i].label);
+
+			if ( s[i].seqgroup >= h->numseqgroups )
+				goto err;
+		}
+	}
+
+	if ( h->numseqgroups ) {
+		struct studio_seqgroup *g = (void *)(buf + h->seqgroupindex);
+		if ( (uint8_t *)(g + h->numtextures) > end )
+			goto err;
+		for(i = 0; i < h->numseqgroups; i++) {
+			swap32(g[i].data);
+			swap32(g[i].cache);
+			con_printf("  group[%.2u] %s cache=%p data=%i: %s\n",
+				i, g[i].label, g[i].cache,
+				g[i].data, g[i].name);
+		}
+	}
+
+	if ( h->numtextures ) {
+		struct studio_texture *t = (void *)(buf + h->textureindex);
+		if ( (uint8_t *)(t + h->numtextures) > end )
+			goto err;
+		for(i = 0; i < h->numtextures; i++) {
+			swap32(t[i].flags);
+			swap32(t[i].width);
+			swap32(t[i].height);
+			swap32(t[i].index);
+			/* FIXME: Check pixel data */
+			con_printf("  tex[%.2u]: flags=0x%x %ux%u: %s\n", i,
+				t[i].flags,
+				t[i].width,
+				t[i].height,
+				t[i].name);
+			UploadTexture(&t[i],
+				buf + t[i].index,
+				buf + t[i].width *
+					t[i].height + t[i].index,
+				g_texnum++);
+		}
+
+	}
+
+	skin = (void *)(buf + h->skinindex);
+	if ( (uint8_t *)(skin + (h->numskinref * h->numskinfamilies)) > end )
+		goto err;
+	for(i = 0; i < h->numskinfamilies; i++) {
+		unsigned int j;
+		con_printf("  skin[%.2u]:", i);
+		for(j = 0; j < h->numskinref; j++) {
+			swap16(skin[i*h->numskinref+j]);
+			con_printf(" %u", skin[i*h->numskinref+j]);
+		}
+		con_printf("\n");
+	}
+
+	if ( h->numbodyparts ) {
+		struct studio_bodypart *p = (void *)(buf + h->bodypartindex);
+		if ( (uint8_t *)(p + h->numbodyparts) > end )
+			goto err;
+		for(i = 0; i < h->numbodyparts; i++) {
+			struct studio_dmodel *m;
+			unsigned int j;
+
+			swap32(p[i].nummodels);
+			swap32(p[i].base);
+			swap32(p[i].modelindex);
+			con_printf("  bodypart[%.2u]: %u models b=%u %s\n",
+				i, p[i].nummodels, p[i].base, p[i].name);
+
+			m = (void *)(buf + p[i].modelindex);
+			if ( (uint8_t *)(m + p[i].nummodels) > end )
+				goto err;
+
+			for(j = 0; j < p[i].nummodels; j++) {
+				struct studio_mesh *msh;
+				unsigned int k;
+				vec3_t *v;
+
+				swap32(m[j].type);
+				swap32(m[j].nummesh);
+				swapfloat(m[j].boundingradius);
+				swap32(m[j].meshindex);
+				swap32(m[j].numverts);
+				swap32(m[j].vertinfoindex);
+				swap32(m[j].vertindex);
+				swap32(m[j].numnorms);
+				swap32(m[j].norminfoindex);
+				swap32(m[j].normindex);
+				swap32(m[j].numgroups);
+				swap32(m[j].groupindex);
+				con_printf("   x model[%.2u]: meshes=%u "
+					"verts=%u tris=%u: %s\n", j,
+					m[j].nummesh,
+					m[j].numverts,
+					m[j].numnorms,
+					m[j].name);
+
+				v = (void *)(buf + m[j].vertindex);
+				if ( (uint8_t *)(v + m[j].numverts) > end )
+					goto err;
+				for(k = 0; k < m[j].numverts; k++)
+					swapvec3(v[k]);
+
+				v = (void *)(buf + m[j].normindex);
+				if ( (uint8_t *)(v + m[j].numnorms) > end )
+					goto err;
+				for(k = 0; k < m[j].numnorms; k++)
+					swapvec3(v[k]);
+
+				msh = (void *)(buf + m[j].meshindex);
+				if ( (uint8_t *)(msh + m[j].nummesh) > end )
+					goto err;
+
+				for(k = 0; k < m[j].nummesh; k++) {
+					unsigned int x, nxt;
+					int16_t *tricmd;
+
+					swap32(msh[k].numtris);
+					swap32(msh[k].triindex);
+					swap32(msh[k].numnorms);
+					swap32(msh[k].skinref);
+					swap32(msh[k].normindex);
+					con_printf("    - mesh[%u]: %u tris, %u norms skin %.2u\n",
+						k,
+						msh[k].numnorms,
+						msh[k].numtris,
+						msh[k].skinref);
+
+					tricmd = (void *)(buf + msh[k].triindex);
+					for(x = nxt = 0; ; x++) {
+						if ( (uint8_t *)&tricmd[x + 1] > end )
+							goto err;
+						swap16(tricmd[x])
+						if ( x == nxt ) {
+							if ( tricmd[x] == 0 )
+								break;
+							if ( tricmd[x] < 0 )
+								nxt += -tricmd[x] * 4;
+							else
+								nxt += tricmd[x] * 4;
+							nxt++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return 1;
+err:
+	con_printf("studio: %s: corrupt IDST data\n", fn);
+	return 0;
+}
+
+/* Loads a studio file and byte swaps the header */
+static uint8_t *studio_file(const char *fn, size_t *sz)
+{
+	struct studio_hdr *h;
+	size_t len;
+	void *buf;
+	FILE *fp;
+
+	if ( fn == NULL )
+		return NULL;
+
+	// load the model
+	fp = fopen(fn, "rb");
+	if ( fp == NULL)
+		return NULL;
+
+	fseek(fp, 0, SEEK_END);
+	len = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+
+	buf = malloc(len);
+	if (buf == NULL ) {
+		fclose (fp);
+		return NULL;
+	}
+
+	fread(buf, len, 1, fp);
+	fclose(fp);
+
+	h = buf;
+
+	if ( len < sizeof(*h) ) {
+		free(buf);
+		return 0;
+	}
 
 	swap32(h->id);
 	swap32(h->version);
@@ -226,405 +601,132 @@ static int swap_model(const char *fn, struct studio_hdr *h, size_t len)
 	swap32(h->transitionindex);
 
 	if ( h->id != STUDIO_IDST && h->id != STUDIO_IDSQ ) {
-		con_printf("studio: %s: Bad magic\n", fn);
+		free(buf);
 		return 0;
 	}
 
-	if ( h->length != len )
-		goto err;
+	if ( h->length != len ) {
+		free(buf);
+		return 0;
+	}
 
 	con_printf("studio: %s: %s\n", fn,
 		(h->id == STUDIO_IDST) ? "IDST" : "IDSQ");
 	con_printf(" o version %u, %uKB - %s\n",
 		h->version, h->length/1024, h->name);
 
-	if ( h->id == STUDIO_IDSQ )
-		return 1;
+	if ( sz )
+		*sz = len;
 
-	con_printf(" o %u bones, %u controllers\n",
-			h->numbones, h->numbonecontrollers);
-	con_printf(" o %u sequences, %u groups\n",
-		h->numseq, h->numseqgroups);
-	con_printf(" o %u hit boxes\n", h->numhitboxes);
-	con_printf(" o %u textures\n", h->numtextures);
-	con_printf(" o %u skins %u families\n",
-		h->numskinref, h->numskinfamilies);
-	con_printf(" o %u bodyparts, %u attachments\n",
-		h->numbodyparts, h->numattachments);
-
-	if ( h->numbones ) {
-		struct studio_bone *b = buf + h->boneindex;
-		if ( b + h->numbones > end )
-			goto err;
-		for(i = 0; i < h->numbones; i++) {
-			uint32_t j;
-			swap32(b[i].parent);
-			swap32(b[i].flags);
-			for(j = 0; j < 6; j++) {
-				swap32(b[i].bonecontroller[j]);
-				swapfloat(b[i].value[j]);
-				swapfloat(b[i].scale[j]);
-			}
-			con_printf("  bone[%.2u]: parent=%i "
-				"flags=0x%x: %s\n", i, 
-				b[i].parent, b[i].flags, b[i].name);
-		}
-	}
-
-	if ( h->numbonecontrollers ) {
-		struct studio_bonecontroller *c = buf + h->bonecontrollerindex;
-		if ( c + h->numbones > end )
-			goto err;
-		for(i = 0; i < h->numbonecontrollers; i++) {
-			swap32(c[i].bone);
-			swap32(c[i].type);
-			swapfloat(c[i].start);
-			swapfloat(c[i].end);
-			swap32(c[i].rest);
-			swap32(c[i].index);
-			con_printf("  controller[%.2u] bone=%i type=%i "
-					"index=%u\n",
-					i, c[i].bone, c[i].index, c[i].index);
-		}
-	}
-
-	if ( h->numhitboxes ) {
-		struct studio_bbox *x = buf + h->hitboxindex;
-		if ( x + h->numhitboxes > end )
-			goto err;
-		for(i = 0; i < h->numhitboxes; i++) {
-			swap32(x[i].bone);
-			swap32(x[i].group);
-			swapvec3(x[i].bbmin);
-			swapvec3(x[i].bbmax);
-		}
-	}
-
-	if ( h->numseq ) {
-		struct studio_seqdesc *s = buf + h->seqindex;
-		unsigned int j;
-		if ( s + h->numseq > end )
-			goto err;
-		for(i = 0; i < h->numseq; i++) {
-			swapfloat(s[i].fps);
-			swap32(s[i].flags);
-			swap32(s[i].activity);
-			swap32(s[i].actweight);
-			swap32(s[i].numevents);
-			swap32(s[i].eventindex);
-			swap32(s[i].numframes);
-			swap32(s[i].numpivots);
-			swap32(s[i].pivotindex);
-			swap32(s[i].motiontype);
-			swap32(s[i].motionbone);
-			swapvec3(s[i].linearmovement);
-			swap32(s[i].automoveposindex);
-			swap32(s[i].automoveangleindex);
-			swapvec3(s[i].bbmin);
-			swapvec3(s[i].bbmax);
-			swap32(s[i].numblends);
-			swap32(s[i].animindex);
-			for(j = 0; j < 2; j++) {
-				swap32(s[i].blendtype[j]);
-				swapfloat(s[i].blendstart[j]);
-				swapfloat(s[i].blendend[j]);
-			}
-			swap32(s[i].blendparent);
-			swap32(s[i].seqgroup);
-			swap32(s[i].entrynode);
-			swap32(s[i].exitnode);
-			swap32(s[i].nodeflags);
-			swap32(s[i].nextseq);
-
-			con_printf("  seq[%.2u]: grp%.2u %.1ffps %.1fs %s\n", 
-				i, s[i].seqgroup, s[i].fps,
-				(float)s[i].numframes / s[i].fps,
-				s[i].label);
-
-			if ( s[i].seqgroup >= h->numseqgroups )
-				goto err;
-		}
-	}
-
-	if ( h->numseqgroups ) {
-		struct studio_seqgroup *g = buf + h->seqgroupindex;
-		if ( g + h->numtextures > end )
-			goto err;
-		for(i = 0; i < h->numseqgroups; i++) {
-			swap32(g[i].data);
-			swap32(g[i].cache);
-			con_printf("  group[%.2u] %s cache=%p data=%i: %s\n",
-				i, g[i].label, g[i].cache,
-				g[i].data, g[i].name);
-			if ( g[i].cache )
-				g[i].cache = NULL;
-		}
-	}
-
-	if ( h->numtextures ) {
-		struct studio_texture *t = buf + h->textureindex;
-		if ( t + h->numtextures > end )
-			goto err;
-		for(i = 0; i < h->numtextures; i++) {
-			swap32(t[i].flags);
-			swap32(t[i].width);
-			swap32(t[i].height);
-			swap32(t[i].index);
-			/* FIXME: Check pixel data */
-			con_printf("  tex[%.2u]: flags=0x%x %ux%u: %s\n", i,
-				t[i].flags,
-				t[i].width,
-				t[i].height,
-				t[i].name);
-		}
-
-	}
-
-	skin = buf + h->skinindex;
-	if ( skin + (h->numskinref * h->numskinfamilies) > end )
-		goto err;
-	for(i = 0; i < h->numskinfamilies; i++) {
-		unsigned int j;
-		con_printf("  skin[%.2u]:", i);
-		for(j = 0; j < h->numskinref; j++) {
-			swap16(skin[i*h->numskinref+j]);
-			con_printf(" %u", skin[i*h->numskinref+j]);
-		}
-		con_printf("\n");
-	}
-
-	if ( h->numbodyparts ) {
-		struct studio_bodypart *p = buf + h->bodypartindex;
-		if ( p + h->numbodyparts > end )
-			goto err;
-		for(i = 0; i < h->numbodyparts; i++) {
-			struct studio_dmodel *m;
-			unsigned int j;
-
-			swap32(p[i].nummodels);
-			swap32(p[i].base);
-			swap32(p[i].modelindex);
-			con_printf("  bodypart[%.2u]: %u models b=%u %s\n",
-				i, p[i].nummodels, p[i].base, p[i].name);
-
-			m = buf + p[i].modelindex;
-			if ( m + p[i].nummodels > end )
-				goto err;
-
-			for(j = 0; j < p[i].nummodels; j++) {
-				struct studio_mesh *msh;
-				unsigned int k;
-				vec3_t *v;
-
-				swap32(m[j].type);
-				swap32(m[j].nummesh);
-				swapfloat(m[j].boundingradius);
-				swap32(m[j].meshindex);
-				swap32(m[j].numverts);
-				swap32(m[j].vertinfoindex);
-				swap32(m[j].vertindex);
-				swap32(m[j].numnorms);
-				swap32(m[j].norminfoindex);
-				swap32(m[j].normindex);
-				swap32(m[j].numgroups);
-				swap32(m[j].groupindex);
-				con_printf("  x model[%.2u]: meshes=%u "
-					"verts=%u tris=%u: %s\n", j, 
-					m[j].nummesh,
-					m[j].numverts,
-					m[j].numnorms,
-					m[j].name);
-
-				v = buf + m[j].vertindex;
-				if ( v + m[j].numverts > end )
-					goto err;
-				for(k = 0; k < m[j].numverts; k++)
-					swapvec3(v[k]);
-
-				v = buf + m[j].normindex;
-				if ( v + m[j].numnorms > end )
-					goto err;
-				for(k = 0; k < m[j].numverts; k++)
-					swapvec3(v[k]);
-
-				msh = buf + m[j].meshindex;
-				if ( msh + m[j].nummesh > end )
-					goto err;
-
-				for(k = 0; k < m[j].nummesh; k++) {
-					swap32(msh[k].numtris);
-					swap32(msh[k].triindex);
-					swap32(msh[k].numnorms);
-					swap32(msh[k].skinref);
-					swap32(msh[k].normindex);
-					con_printf("    - mesh[%u]: %u tris, %u norms skin %.2u\n",
-						k,
-						msh[k].numnorms,
-						msh[k].numtris,
-						msh[k].skinref);
-					/* FIXME: validate tricmds */
-				}
-			}
-		}
-	}
-
-	if ( h->numattachments ) {
-		struct studio_attachment *a = buf + h->attachmentindex;
-		if ( a + h->numattachments > end )
-			goto err;
-		for(i = 0; i < h->numattachments; i++) {
-			unsigned int j;
-			swap32(a[i].type);
-			swap32(a[i].bone);
-			swapvec3(a[i].org);
-			for(j = 0; j < 3; j++)
-				swapvec3(a[i].vectors[j]);
-			con_printf("  attach[%.2u]: type=%u bone=%i %s\n",
-				a[i].type, a[i].bone, a[i].name);
-		}
-	}
-
-	return 1;
-err:
-	con_printf("studio: %s: corrupt header\n", fn);
-	return 0;
+	return buf;
 }
 
-/* Here we just load the data structures from the file, validate them and
- * then upload the textures
- */
-struct studio_hdr *sm_LoadModel(struct studio_model *sm, char *modelname)
+/* Load a studio model from a file (or files) */
+int sm_LoadModel(struct studio_model *sm, char *modelname)
 {
-	FILE *fp;
-	long size;
-	void *buf;
-	uint8_t	*pin;
 	struct studio_hdr *h;
-	struct studio_texture *ptexture;
-	int i;
+	unsigned int i;
+	uint8_t *buf;
+	size_t size;
 
-	if ( modelname == NULL )
-		return NULL;
-
-	// load the model
-	fp = fopen(modelname, "rb");
-	if ( fp == NULL) {
+	/* First load the model file */
+	buf = studio_file(modelname, &size);
+	if ( buf == NULL ) {
 		con_printf("studio: %s: %s\n",
-				modelname, load_err(NULL));
-		return NULL;
+				modelname, load_err("Corrupt header"));
+		return 0;
 	}
 
-	fseek(fp, 0, SEEK_END);
-	size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
+	h = (struct studio_hdr *)buf;
+	sm->m_pstudiohdr = h;
 
-	buf = malloc(size);
-	if (buf == NULL ) {
-		con_printf("studio: %s: malloc(): %s\n",
-				modelname, load_err(NULL));
-		fclose (fp);
-		return NULL;
-	}
+	if ( !load_idst(modelname, h, size) )
+		goto err_free;
 
-	fread(buf, size, 1, fp);
-	fclose(fp);
+	/* Then we load external textures if necessary */
+	if ( h->numtextures == 0) {
+		char tfn[PATH_MAX];
+		void *ptr;
+		size_t sz;
 
-	pin = (uint8_t *)buf;
-	h = (struct studio_hdr *)pin;
+		strcpy(tfn, modelname);
+		strcpy(&tfn[strlen(tfn) - 4], "t.mdl");
 
-	/* Byte swap the main header */
-	if ( !swap_model(modelname, h, size) ) {
-		free(buf);
-		return NULL;
-	}
-
-	if (sm->m_pstudiohdr == NULL && h->id != STUDIO_IDST) {
-		con_printf("studio: %s: IDST expected\n", modelname);
-		free (buf);
-		return NULL;
-	}
-
-	ptexture = (struct studio_texture *)(pin + h->textureindex);
-	if (h->textureindex > 0 && h->numtextures <= MAXSTUDIOSKINS) {
-		int n = h->numtextures;
-		for (i = 0; i < n; i++)
-			sm_UploadTexture(sm, &ptexture[i],
-				buf + ptexture[i].index,
-				buf + ptexture[i].width *
-					ptexture[i].height + ptexture[i].index,
-				g_texnum++);
-	}
-
-	// UNDONE: free texture memory
-
-	if ( sm->m_pstudiohdr == NULL )
-		sm->m_pstudiohdr = pin;
-
-	return (struct studio_hdr *)buf;
-}
-
-
-/* After already loading the file, we read in relevant data structures and
- * get ready for rendering
- */
-int sm_PostLoadModel(struct studio_model *sm, char *modelname)
-{
-	int n, i;
-
-	// preload textures
-	if (sm->m_pstudiohdr->numtextures == 0) {
-		char texturename[PATH_MAX];
-
-		strcpy(texturename, modelname);
-		strcpy(&texturename[strlen(texturename) - 4], "T.mdl");
-
-		sm->m_ptexturehdr = sm_LoadModel(sm, texturename);
-		if (!sm->m_ptexturehdr)
-		{
-			sm_FreeModel(sm);
-			return 0;
+		ptr = studio_file(tfn, &sz);
+		if ( ptr == NULL ) {
+			con_printf("studio: %s: %s\n",
+				modelname, load_err("Corrupt header"));
+			goto err_free;
 		}
+
+		sm->m_ptexturehdr = ptr;
+		if ( !load_idst(tfn, ptr, sz) )
+			goto err_free_tex;
+
 		sm->m_owntexmodel = 1;
 	}else{
-		sm->m_ptexturehdr = sm->m_pstudiohdr;
+		sm->m_ptexturehdr = h;
 		sm->m_owntexmodel = 0;
 	}
 
-	// preload animations
-	for (i = 1; i < sm->m_pstudiohdr->numseqgroups; i++) {
-		char fn[PATH_MAX];
+	/* Load inbuilt anims for group 0 */
+	if ( !load_idsq(modelname, h, 0, NULL, 0) )
+		goto err_free_tex;
 
-		snprintf(fn, sizeof(fn) - 2, "%s", modelname);
-		sprintf(fn + strlen(fn) - 4, "%02d.mdl", i);
+	/* Now we load any external sequence groups */
+	for (i = 1; i < h->numseqgroups; i++) {
+		char sfn[PATH_MAX];
+		void *ptr;
+		size_t sz;
 
-		sm->m_panimhdr[i] = sm_LoadModel(sm, fn);
-		if ( sm->m_panimhdr[i] == NULL ) {
-			sm_FreeModel(sm);
-			return 0;
+		snprintf(sfn, sizeof(sfn) - 2, "%s", modelname);
+		sprintf(sfn + strlen(sfn) - 4, "%02d.mdl", i);
+
+		ptr = studio_file(sfn, &sz);
+		if ( ptr == NULL ) {
+			con_printf("studio: %s: %s\n",
+				sfn, load_err("Bad header"));
+			goto err_free_group;
 		}
+
+		if ( !load_idsq(modelname, h, i, ptr, sz) )
+			goto err_free_group;
+
+		sm->m_panimhdr[i] = ptr;
 	}
 
-	sm_SetSequence(sm, 0);
+	/* Then initialise for rendering */
+	sm_SetSequence(sm, 4);
+	for (i = 0; i < sm->m_pstudiohdr->numbodyparts; i++)
+		sm_SetBodygroup(sm, i, 0);
 	sm_SetController(sm, 0, 0.0f);
 	sm_SetController(sm, 1, 0.0f);
 	sm_SetController(sm, 2, 0.0f);
 	sm_SetController(sm, 3, 0.0f);
 	sm_SetMouth(sm, 0.0f);
 
-	for (n = 0; n < sm->m_pstudiohdr->numbodyparts; n++)
-		sm_SetBodygroup(sm, n, 0);
+/* 	vec3_t mins, maxs;
+ * 	ExtractBbox (mins, maxs);
+ * 	if (mins[2] < 5.0f)
+ * 		sm->m_origin[2] = -mins[2];
+ */
 
 	sm_SetSkin(sm, 0);
-/*
-	vec3_t mins, maxs;
-	ExtractBbox (mins, maxs);
-	if (mins[2] < 5.0f)
-		sm->m_origin[2] = -mins[2];
-*/
+
 	return 1;
+
+err_free_group:
+	for (i = 1; i < h->numseqgroups; i++)
+		free(sm->m_panimhdr[i]);
+err_free_tex:
+	free(sm->m_ptexturehdr);
+err_free:
+	free(buf);
+	return 0;
 }
 
-int sm_SetSequence(struct studio_model *sm, int iSequence)
+
+int sm_SetSequence(struct studio_model *sm, unsigned int iSequence)
 {
 	if (iSequence > sm->m_pstudiohdr->numseq)
 		return sm->m_sequence;
@@ -640,7 +742,7 @@ void sm_ExtractBbox(struct studio_model *sm, float *mins, float *maxs)
 	struct studio_seqdesc	*pseqdesc;
 
 	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
-	
+
 	mins[0] = pseqdesc[ sm->m_sequence ].bbmin[0];
 	mins[1] = pseqdesc[ sm->m_sequence ].bbmin[1];
 	mins[2] = pseqdesc[ sm->m_sequence ].bbmin[2];
@@ -669,36 +771,41 @@ void sm_GetSequenceInfo(struct studio_model *sm, float *pflFrameRate, float *pfl
 	}
 }
 
-float sm_SetController(struct studio_model *sm, int iController, float flValue)
+float sm_SetController(struct studio_model *sm, unsigned int iController,
+			float flValue)
 {
+	struct studio_bonecontroller *p;
+	unsigned int i;
+	int setting;
+
 	if (!sm->m_pstudiohdr)
 		return 0.0f;
 
-	struct studio_bonecontroller	*pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	p = (void *)((uint8_t *)sm->m_pstudiohdr +
+			sm->m_pstudiohdr->bonecontrollerindex);
 
 	// find first controller that matches the index
-	int i;
-	for (i = 0; i < sm->m_pstudiohdr->numbonecontrollers; i++, pbonecontroller++)
+	for (i = 0; i < sm->m_pstudiohdr->numbonecontrollers; i++, p++)
 	{
-		if (pbonecontroller->index == iController)
+		if (p->index == iController)
 			break;
 	}
 	if (i >= sm->m_pstudiohdr->numbonecontrollers)
 		return flValue;
 
 	// wrap 0..360 if it's a rotational controller
-	if (pbonecontroller->type & (STUDIO_XR | STUDIO_YR | STUDIO_ZR))
+	if (p->type & (STUDIO_XR | STUDIO_YR | STUDIO_ZR))
 	{
 		// ugly hack, invert value if end < start
-		if (pbonecontroller->end < pbonecontroller->start)
+		if (p->end < p->start)
 			flValue = -flValue;
 
 		// does the controller not wrap?
-		if (pbonecontroller->start + 359.0 >= pbonecontroller->end)
+		if (p->start + 359.0 >= p->end)
 		{
-			if (flValue > ((pbonecontroller->start + pbonecontroller->end) / 2.0) + 180)
+			if (flValue > ((p->start + p->end) / 2.0) + 180)
 				flValue = flValue - 360;
-			if (flValue < ((pbonecontroller->start + pbonecontroller->end) / 2.0) - 180)
+			if (flValue < ((p->start + p->end) / 2.0) - 180)
 				flValue = flValue + 360;
 		}
 		else
@@ -710,46 +817,49 @@ float sm_SetController(struct studio_model *sm, int iController, float flValue)
 		}
 	}
 
-	int setting = (int) (255 * (flValue - pbonecontroller->start) /
-	(pbonecontroller->end - pbonecontroller->start));
-
-	if (setting < 0) setting = 0;
-	if (setting > 255) setting = 255;
+	setting = (int) (255 * (flValue - p->start) / (p->end - p->start));
+	if (setting < 0)
+		setting = 0;
+	if (setting > 255)
+		setting = 255;
 	sm->m_controller[iController] = setting;
 
-	return setting * (1.0 / 255.0) * (pbonecontroller->end - pbonecontroller->start) + pbonecontroller->start;
+	return setting * (1.0 / 255.0) * (p->end - p->start) + p->start;
 }
 
 
 float sm_SetMouth(struct studio_model *sm, float flValue)
 {
-	int i;
+	struct studio_bonecontroller *p;
+	unsigned int i;
+	int setting;
 
 	if (!sm->m_pstudiohdr)
 		return 0.0f;
 
-	struct studio_bonecontroller	*pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	p = (void *)((uint8_t *)sm->m_pstudiohdr +
+			sm->m_pstudiohdr->bonecontrollerindex);
 
 	// find first controller that matches the mouth
-	for (i = 0; i < sm->m_pstudiohdr->numbonecontrollers; i++, pbonecontroller++)
+	for (i = 0; i < sm->m_pstudiohdr->numbonecontrollers; i++, p++)
 	{
-		if (pbonecontroller->index == 4)
+		if (p->index == 4)
 			break;
 	}
 
 	// wrap 0..360 if it's a rotational controller
-	if (pbonecontroller->type & (STUDIO_XR | STUDIO_YR | STUDIO_ZR))
+	if (p->type & (STUDIO_XR | STUDIO_YR | STUDIO_ZR))
 	{
 		// ugly hack, invert value if end < start
-		if (pbonecontroller->end < pbonecontroller->start)
+		if (p->end < p->start)
 			flValue = -flValue;
 
 		// does the controller not wrap?
-		if (pbonecontroller->start + 359.0 >= pbonecontroller->end)
+		if (p->start + 359.0 >= p->end)
 		{
-			if (flValue > ((pbonecontroller->start + pbonecontroller->end) / 2.0) + 180)
+			if (flValue > ((p->start + p->end) / 2.0) + 180)
 				flValue = flValue - 360;
-			if (flValue < ((pbonecontroller->start + pbonecontroller->end) / 2.0) - 180)
+			if (flValue < ((p->start + p->end) / 2.0) - 180)
 				flValue = flValue + 360;
 		}
 		else
@@ -761,13 +871,15 @@ float sm_SetMouth(struct studio_model *sm, float flValue)
 		}
 	}
 
-	int setting = (int) (64 * (flValue - pbonecontroller->start) / (pbonecontroller->end - pbonecontroller->start));
+	setting = (int) (64 * (flValue - p->start) / (p->end - p->start));
 
-	if (setting < 0) setting = 0;
-	if (setting > 64) setting = 64;
+	if (setting < 0)
+		setting = 0;
+	if (setting > 64)
+		setting = 64;
 	sm->m_mouth = setting;
 
-	return setting * (1.0 / 64.0) * (pbonecontroller->end - pbonecontroller->start) + pbonecontroller->start;
+	return setting * (1.0 / 64.0) * (p->end - p->start) + p->start;
 }
 
 
@@ -811,28 +923,33 @@ float sm_SetBlending(struct studio_model *sm, int iBlender, float flValue)
 
 
 
-int sm_SetBodygroup(struct studio_model *sm, int iGroup, int iValue)
+int sm_SetBodygroup(struct studio_model *sm, unsigned int iGroup,
+			unsigned int iValue)
 {
+	struct studio_bodypart *p;
+	unsigned int iCurrent;
+
 	if (!sm->m_pstudiohdr)
 		return 0;
 
 	if (iGroup > sm->m_pstudiohdr->numbodyparts)
 		return -1;
 
-	struct studio_bodypart *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + iGroup;
+	p = (void *)((uint8_t *)sm->m_pstudiohdr +
+			sm->m_pstudiohdr->bodypartindex) + iGroup;
 
-	int iCurrent = (sm->m_bodynum / pbodypart->base) % pbodypart->nummodels;
+	iCurrent = (sm->m_bodynum / p->base) % p->nummodels;
 
-	if (iValue >= pbodypart->nummodels)
+	if (iValue >= p->nummodels)
 		return iCurrent;
 
-	sm->m_bodynum = (sm->m_bodynum - (iCurrent * pbodypart->base) + (iValue * pbodypart->base));
+	sm->m_bodynum = (sm->m_bodynum - (iCurrent * p->base) + (iValue * p->base));
 
 	return iValue;
 }
 
 
-int sm_SetSkin(struct studio_model *sm, int iValue)
+int sm_SetSkin(struct studio_model *sm, unsigned int iValue)
 {
 	if (!sm->m_pstudiohdr)
 		return 0;
@@ -849,54 +966,9 @@ int sm_SetSkin(struct studio_model *sm, int iValue)
 
 
 
-void sm_scaleMeshes(struct studio_model *sm, float scale)
-{
-	if (!sm->m_pstudiohdr)
-		return;
-
-	int i, j, k;
-
-	// scale verts
-	int tmp = sm->m_bodynum;
-	for (i = 0; i < sm->m_pstudiohdr->numbodyparts; i++)
-	{
-		struct studio_bodypart *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + i;
-		for (j = 0; j < pbodypart->nummodels; j++)
-		{
-			sm_SetBodygroup(sm, i, j);
-			sm_SetupModel(sm, i);
-
-			vec3_t *pstudioverts = (vec3_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->vertindex);
-
-			for (k = 0; k < sm->m_pmodel->numverts; k++)
-				VectorScale (pstudioverts[k], scale, pstudioverts[k]);
-		}
-	}
-
-	sm->m_bodynum = tmp;
-
-	// scale complex hitboxes
-	struct studio_bbox *pbboxes = (struct studio_bbox *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
-	for (i = 0; i < sm->m_pstudiohdr->numhitboxes; i++)
-	{
-		VectorScale (pbboxes[i].bbmin, scale, pbboxes[i].bbmin);
-		VectorScale (pbboxes[i].bbmax, scale, pbboxes[i].bbmax);
-	}
-
-	// scale bounding boxes
-	struct studio_seqdesc *pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
-	for (i = 0; i < sm->m_pstudiohdr->numseq; i++)
-	{
-		VectorScale (pseqdesc[i].bbmin, scale, pseqdesc[i].bbmin);
-		VectorScale (pseqdesc[i].bbmax, scale, pseqdesc[i].bbmax);
-	}
-
-	// maybe scale exeposition, pivots, attachments
-}
-
 void sm_scaleBones(struct studio_model *sm, float scale)
 {
-	int i, j;
+	unsigned int i, j;
 	if (!sm->m_pstudiohdr)
 		return;
 
@@ -908,5 +980,5 @@ void sm_scaleBones(struct studio_model *sm, float scale)
 			pbones[i].value[j] *= scale;
 			pbones[i].scale[j] *= scale;
 		}
-	}	
+	}
 }

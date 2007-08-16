@@ -20,9 +20,9 @@ typedef void (*proc_keygrab)(u_int16_t);
 void sdl_keyb_mouse(SDL_Event *);
 void sdl_keyb_event(SDL_Event *);
 void sdl_keyb_runq(void);
-void sdl_keyb_bind();
 void sdl_keyb_grab(proc_keygrab);
 void sdl_keyb_ungrab(void);
+void sdl_keyb_print(void);
 
 static inline int sdl_keyb_key(u_int16_t key)
 {

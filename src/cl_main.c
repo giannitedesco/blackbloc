@@ -59,18 +59,22 @@ int cl_init(void)
 	cl_model_load(&ent, "models/monsters/soldier/tris.md2");
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
-	sm_LoadModel(&g_studioModel, "data/scientist/scientist.mdl");
-	sm_PostLoadModel(&g_studioModel, "data/scientist/scientist.mdl");
+
+	sm_LoadModel(&g_studioModel, "data/mdl/forklift.mdl");
 	g_viewerSettings.speedScale = 1.0f;
+	g_viewerSettings.transparency = 1.0f;
+	g_viewerSettings.showHitBoxes = 1;
+	g_viewerSettings.showBones = 1;
+	g_viewerSettings.showTexture = 1;
 
 	return 1;
 }
 
 void cl_render(void)
 {
-	sm_DrawModel(&g_studioModel);
 	cl_model_render(&ent);
-	particle_render();
+	//particle_render();
+	sm_DrawModel(&g_studioModel);
 }
 
 void cl_frame(void)
@@ -78,6 +82,7 @@ void cl_frame(void)
 	/* Set the frame number */
 	client_frame++;
 
+	sm_SetFrame(&g_studioModel, client_frame);
 	/* Process event queue */
 	sdl_keyb_runq();
 

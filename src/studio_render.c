@@ -14,6 +14,7 @@
 #include <string.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <bytesex.h>
 #include <studio_model.h>
 #include <render_settings.h>
 
@@ -34,7 +35,7 @@ vec3_t	g_lightcolor;
 
 static int	g_smodels_total;		// cookie
 
-static vec_t	g_bonetransform[MAXSTUDIOBONES][3][4];	// bone transformation matrix
+static float	g_bonetransform[MAXSTUDIOBONES][3][4];	// bone transformation matrix
 
 static int	g_chrome[MAXSTUDIOVERTS][2];	// texture coords for surface normals
 static int	g_chromeage[MAXSTUDIOBONES];	// last time chrome vectors were updated
@@ -43,28 +44,29 @@ static vec3_t	g_chromeright[MAXSTUDIOBONES];	// chrome vector "right" in bone re
 
 ////////////////////////////////////////////////////////////////////////
 
-void sm_CalcBoneAdj(struct studio_model *sm)
+static void sm_CalcBoneAdj(struct studio_model *sm)
 {
-	int					i, j;
+	unsigned int					i, j;
 	float				value;
-	struct studio_bonecontroller *pbonecontroller;
+	struct studio_bonecontroller *p;
 	
-	pbonecontroller = (struct studio_bonecontroller *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bonecontrollerindex);
+	p = (void *)((uint8_t *)sm->m_pstudiohdr +
+			sm->m_pstudiohdr->bonecontrollerindex);
 
 	for (j = 0; j < sm->m_pstudiohdr->numbonecontrollers; j++)
 	{
-		i = pbonecontroller[j].index;
+		i = p[j].index;
 		if (i <= 3)
 		{
 			// check for 360% wrapping
-			if (pbonecontroller[j].type & STUDIO_RLOOP)
+			if (p[j].type & STUDIO_RLOOP)
 			{
-				value = sm->m_controller[i] * (360.0/256.0) + pbonecontroller[j].start;
+				value = sm->m_controller[i] * (360.0/256.0) + p[j].start;
 			}else{
 				value = sm->m_controller[i] / 255.0;
 				if (value < 0) value = 0;
 				if (value > 1.0) value = 1.0;
-				value = (1.0 - value) * pbonecontroller[j].start + value * pbonecontroller[j].end;
+				value = (1.0 - value) * p[j].start + value * p[j].end;
 			}
 			// Con_DPrintf( "%d %d %f : %f\n", sm->m_controller[j], sm->m_prevcontroller[j], value, dadt );
 		}
@@ -72,10 +74,10 @@ void sm_CalcBoneAdj(struct studio_model *sm)
 		{
 			value = sm->m_mouth / 64.0;
 			if (value > 1.0) value = 1.0;
-			value = (1.0 - value) * pbonecontroller[j].start + value * pbonecontroller[j].end;
+			value = (1.0 - value) * p[j].start + value * p[j].end;
 			// Con_DPrintf("%d %f\n", mouthopen, value );
 		}
-		switch(pbonecontroller[j].type & STUDIO_TYPES)
+		switch(p[j].type & STUDIO_TYPES)
 		{
 		case STUDIO_XR:
 		case STUDIO_YR:
@@ -92,12 +94,12 @@ void sm_CalcBoneAdj(struct studio_model *sm)
 }
 
 
-void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *q )
+static void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *q )
 {
 	int					j, k;
 	vec4_t				q1, q2;
 	vec3_t				angle1, angle2;
-	struct studio_animvalue	*panimvalue;
+	struct studio_animvalue	*p;
 
 	for (j = 0; j < 3; j++)
 	{
@@ -107,40 +109,44 @@ void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct s
 		}
 		else
 		{
-			panimvalue = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j+3]);
+			p = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j+3]);
 			k = frame;
-			while (panimvalue->num.total <= k)
+			while (p->num.total <= k)
 			{
-				k -= panimvalue->num.total;
-				panimvalue += panimvalue->num.valid + 1;
+				if ( j == 2 && pbone->parent == -1 )
+					printf("k=%i %u %u\n", k, p->num.total, p->num.valid);
+				k -= p->num.total;
+				p += p->num.valid + 1;
 			}
 			// Bah, missing blend!
-			if (panimvalue->num.valid > k)
+			if (p->num.valid > k)
 			{
-				angle1[j] = panimvalue[k+1].value;
+				angle1[j] = (int16_t)le_16(p[k+1].value);
+				if ( j == 2 && pbone->parent == -1 )
+					printf("angle1=%f\n", angle1[j]);
 
-				if (panimvalue->num.valid > k + 1)
+				if (p->num.valid > k + 1)
 				{
-					angle2[j] = panimvalue[k+2].value;
+					angle2[j] = (int16_t)le_16(p[k+2].value);
 				}
 				else
 				{
-					if (panimvalue->num.total > k + 1)
+					if (p->num.total > k + 1)
 						angle2[j] = angle1[j];
 					else
-						angle2[j] = panimvalue[panimvalue->num.valid+2].value;
+						angle2[j] = (int16_t)le_16(p[p->num.valid+2].value);
 				}
 			}
 			else
 			{
-				angle1[j] = panimvalue[panimvalue->num.valid].value;
-				if (panimvalue->num.total > k + 1)
+				angle1[j] = (int16_t)le_16(p[p->num.valid].value);
+				if (p->num.total > k + 1)
 				{
 					angle2[j] = angle1[j];
 				}
 				else
 				{
-					angle2[j] = panimvalue[panimvalue->num.valid + 2].value;
+					angle2[j] = (int16_t)le_16(p[p->num.valid + 2].value);
 				}
 			}
 			angle1[j] = pbone->value[j+3] + angle1[j] * pbone->scale[j+3];
@@ -159,6 +165,8 @@ void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct s
 		AngleQuaternion( angle1, q1 );
 		AngleQuaternion( angle2, q2 );
 		QuaternionSlerp( q1, q2, s, q );
+		if ( pbone->parent == -1 )
+			printf(" -- %f/%f = %f\n", angle1[2], angle2[2], q[2]);
 	}
 	else
 	{
@@ -167,48 +175,48 @@ void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, struct s
 }
 
 
-void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *pos )
+static void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, struct studio_bone *pbone, struct studio_anim *panim, float *pos )
 {
 	int					j, k;
-	struct studio_animvalue	*panimvalue;
+	struct studio_animvalue	*p;
 
 	for (j = 0; j < 3; j++)
 	{
 		pos[j] = pbone->value[j]; // default;
 		if (panim->offset[j] != 0)
 		{
-			panimvalue = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j]);
+			p = (struct studio_animvalue *)((uint8_t *)panim + panim->offset[j]);
 			
 			k = frame;
 			// find span of values that includes the frame we want
-			while (panimvalue->num.total <= k)
+			while (p->num.total <= k)
 			{
-				k -= panimvalue->num.total;
-				panimvalue += panimvalue->num.valid + 1;
+				k -= p->num.total;
+				p += p->num.valid + 1;
 			}
 			// if we're inside the span
-			if (panimvalue->num.valid > k)
+			if (p->num.valid > k)
 			{
 				// and there's more data in the span
-				if (panimvalue->num.valid > k + 1)
+				if (p->num.valid > k + 1)
 				{
-					pos[j] += (panimvalue[k+1].value * (1.0 - s) + s * panimvalue[k+2].value) * pbone->scale[j];
+					pos[j] += ((int16_t)le_16(p[k+1].value) * (1.0 - s) + s * (int16_t)le_16(p[k+2].value)) * pbone->scale[j];
 				}
 				else
 				{
-					pos[j] += panimvalue[k+1].value * pbone->scale[j];
+					pos[j] += (int16_t)le_16(p[k+1].value) * pbone->scale[j];
 				}
 			}
 			else
 			{
 				// are we at the end of the repeating values section and there's another section with data?
-				if (panimvalue->num.total <= k + 1)
+				if (p->num.total <= k + 1)
 				{
-					pos[j] += (panimvalue[panimvalue->num.valid].value * (1.0 - s) + s * panimvalue[panimvalue->num.valid + 2].value) * pbone->scale[j];
+					pos[j] += ((int16_t)le_16(p[p->num.valid].value) * (1.0 - s) + s * (int16_t)le_16(p[p->num.valid + 2].value)) * pbone->scale[j];
 				}
 				else
 				{
-					pos[j] += panimvalue[panimvalue->num.valid].value * pbone->scale[j];
+					pos[j] += (int16_t)le_16(p[p->num.valid].value) * pbone->scale[j];
 				}
 			}
 		}
@@ -220,15 +228,15 @@ void sm_CalcBonePosition(struct studio_model *sm,  int frame, float s, struct st
 }
 
 
-void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, struct studio_seqdesc *pseqdesc, struct studio_anim *panim, float f )
+static void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, struct studio_seqdesc *pseqdesc, struct studio_anim *panim, float f )
 {
-	int					i;
-	int					frame;
+	unsigned int i;
+	unsigned int frame;
 	struct studio_bone		*pbone;
 	float				s;
 
-	frame = (int)f;
-	s = (f - frame);
+	frame = lrintf(fabsf(f));
+	s = lrintf(fabsf(nearbyint(f) - f));
 
 	// add in programatic controllers
 	sm_CalcBoneAdj(sm);
@@ -249,7 +257,7 @@ void sm_CalcRotations (struct studio_model *sm,  vec3_t *pos, vec4_t *q, struct 
 }
 
 
-struct studio_anim * sm_GetAnim(struct studio_model *sm,  struct studio_seqdesc *pseqdesc )
+static struct studio_anim * sm_GetAnim(struct studio_model *sm,  struct studio_seqdesc *pseqdesc )
 {
 	struct studio_seqgroup	*pseqgroup;
 	pseqgroup = (struct studio_seqgroup *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqgroupindex) + pseqdesc->seqgroup;
@@ -263,9 +271,9 @@ struct studio_anim * sm_GetAnim(struct studio_model *sm,  struct studio_seqdesc 
 }
 
 
-void sm_SlerpBones(struct studio_model *sm,  vec4_t q1[], vec3_t pos1[], vec4_t q2[], vec3_t pos2[], float s )
+static void sm_SlerpBones(struct studio_model *sm,  vec4_t q1[], vec3_t pos1[], vec4_t q2[], vec3_t pos2[], float s )
 {
-	int			i;
+	unsigned int i;
 	vec4_t		q3;
 	float		s1;
 
@@ -288,26 +296,25 @@ void sm_SlerpBones(struct studio_model *sm,  vec4_t q1[], vec3_t pos1[], vec4_t 
 }
 
 
-void sm_AdvanceFrame(struct studio_model *sm,  float dt )
+void sm_AdvanceFrame(struct studio_model *sm,  float dt)
 {
+	struct studio_seqdesc	*p;
+
 	if (!sm->m_pstudiohdr)
 		return;
 
-	struct studio_seqdesc	*pseqdesc;
-	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
+	p = (void *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex)
+		+ sm->m_sequence;
 
 	if (dt > 0.1)
 		dt = 0.1f;
-	sm->m_frame += dt * pseqdesc->fps;
+	sm->m_frame += dt * p->fps;
 
-	if (pseqdesc->numframes <= 1)
-	{
-		sm->m_frame = 0;
-	}
-	else
-	{
+	if (p->numframes <= 1) {
+		sm->m_frame = 0.0;
+	}else{
 		// wrap
-		sm->m_frame -= (int)(sm->m_frame / (pseqdesc->numframes - 1)) * (pseqdesc->numframes - 1);
+		sm->m_frame -= (int)(sm->m_frame / (p->numframes - 1)) * (p->numframes - 1);
 	}
 }
 
@@ -325,23 +332,20 @@ int sm_SetFrame(struct studio_model *sm,  int nFrame )
 
 	sm->m_frame = nFrame;
 
-	if (pseqdesc->numframes <= 1)
-	{
-		sm->m_frame = 0;
-	}
-	else
-	{
+	if (pseqdesc->numframes <= 1) {
+		sm->m_frame = 0.0;
+	}else{
 		// wrap
-		sm->m_frame -= (int)(sm->m_frame / (pseqdesc->numframes - 1)) * (pseqdesc->numframes - 1);
+		sm->m_frame = (float)(nFrame % pseqdesc->numframes);
 	}
 
 	return sm->m_frame;
 }
 
 
-void sm_SetUpBones (struct studio_model *sm)
+static void sm_SetUpBones (struct studio_model *sm)
 {
-	int					i;
+	unsigned int i;
 
 	struct studio_bone		*pbones;
 	struct studio_seqdesc	*pseqdesc;
@@ -366,14 +370,14 @@ void sm_SetUpBones (struct studio_model *sm)
 	pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex) + sm->m_sequence;
 
 	panim = sm_GetAnim(sm, pseqdesc );
-	sm_CalcRotations(sm, pos, q, pseqdesc, panim, sm->m_frame );
+	sm_CalcRotations(sm, pos, q, pseqdesc, panim, sm->m_frame);
 
 	if (pseqdesc->numblends > 1)
 	{
 		float				s;
 
 		panim += sm->m_pstudiohdr->numbones;
-		sm_CalcRotations(sm, pos2, q2, pseqdesc, panim, sm->m_frame );
+		sm_CalcRotations(sm, pos2, q2, pseqdesc, panim, sm->m_frame);
 		s = sm->m_blending[0] / 255.0;
 
 		sm_SlerpBones(sm, q, pos, q2, pos2, s );
@@ -381,10 +385,10 @@ void sm_SetUpBones (struct studio_model *sm)
 		if (pseqdesc->numblends == 4)
 		{
 			panim += sm->m_pstudiohdr->numbones;
-			sm_CalcRotations(sm, pos3, q3, pseqdesc, panim, sm->m_frame );
+			sm_CalcRotations(sm, pos3, q3, pseqdesc, panim, sm->m_frame);
 
 			panim += sm->m_pstudiohdr->numbones;
-			sm_CalcRotations(sm, pos4, q4, pseqdesc, panim, sm->m_frame );
+			sm_CalcRotations(sm, pos4, q4, pseqdesc, panim, sm->m_frame);
 
 			s = sm->m_blending[0] / 255.0;
 			sm_SlerpBones(sm, q3, pos3, q4, pos4, s );
@@ -404,10 +408,13 @@ void sm_SetUpBones (struct studio_model *sm)
 		bonematrix[2][3] = pos[i][2];
 
 		if (pbones[i].parent == -1) {
+			//if ( bonematrix[0][3] < 0.0005 )
+			//	bonematrix[0][3] = 2783.318115;
+			//printf("%f: %f\n", sm->m_frame, q[i][2]);
 			memcpy(g_bonetransform[i], bonematrix, sizeof(float) * 12);
 		} 
 		else {
-			R_ConcatTransforms (g_bonetransform[pbones[i].parent], bonematrix, g_bonetransform[i]);
+			R_ConcatTransforms(g_bonetransform[pbones[i].parent], bonematrix, g_bonetransform[i]);
 		}
 	}
 }
@@ -419,7 +426,7 @@ void sm_SetUpBones (struct studio_model *sm)
 sm_TransformFinalVert
 ================
 */
-void sm_Lighting (struct studio_model *sm, float *lv, int bone, int flags, vec3_t normal)
+static void sm_Lighting(float *lv, int bone, int flags, vec3_t normal)
 {
 	float 	illum;
 	float	lightcos;
@@ -504,9 +511,9 @@ outputs:
 	g_shadelight
 ================
 */
-void sm_SetupLighting (struct studio_model *sm)
+static void sm_SetupLighting (struct studio_model *sm)
 {
-	int i;
+	unsigned int i;
 	g_ambientlight = 32;
 	g_shadelight = 192;
 
@@ -514,9 +521,10 @@ void sm_SetupLighting (struct studio_model *sm)
 	g_lightvec[1] = 0;
 	g_lightvec[2] = -1.0;
 
-	g_lightcolor[0] = g_viewerSettings.lColor[0];
-	g_lightcolor[1] = g_viewerSettings.lColor[1];
-	g_lightcolor[2] = g_viewerSettings.lColor[2];
+	/* FIXME */
+	g_lightcolor[0] = 0.0;//g_viewerSettings.lColor[0];
+	g_lightcolor[1] = 0.0;//g_viewerSettings.lColor[1];
+	g_lightcolor[2] = 0.0;//g_viewerSettings.lColor[2];
 
 	// TODO: only do it for bones that actually have textures
 	for (i = 0; i < sm->m_pstudiohdr->numbones; i++)
@@ -538,9 +546,9 @@ outputs:
 =================
 */
 
-void sm_SetupModel (struct studio_model *sm, int bodypart )
+static void sm_SetupModel(struct studio_model *sm, unsigned int bodypart)
 {
-	int index;
+	unsigned int index;
 
 	if (bodypart > sm->m_pstudiohdr->numbodyparts)
 	{
@@ -582,6 +590,51 @@ void drawBox(vec3_t *v)
 
 }
 
+void sm_scaleMeshes(struct studio_model *sm, float scale)
+{
+	unsigned int i, j, k;
+
+	if (!sm->m_pstudiohdr)
+		return;
+
+	// scale verts
+	int tmp = sm->m_bodynum;
+	for (i = 0; i < sm->m_pstudiohdr->numbodyparts; i++)
+	{
+		struct studio_bodypart *pbodypart = (struct studio_bodypart *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->bodypartindex) + i;
+		for (j = 0; j < pbodypart->nummodels; j++)
+		{
+			sm_SetBodygroup(sm, i, j);
+			sm_SetupModel(sm, i);
+
+			vec3_t *pstudioverts = (vec3_t *)((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->vertindex);
+
+			for (k = 0; k < sm->m_pmodel->numverts; k++)
+				VectorScale (pstudioverts[k], scale, pstudioverts[k]);
+		}
+	}
+
+	sm->m_bodynum = tmp;
+
+	// scale complex hitboxes
+	struct studio_bbox *pbboxes = (struct studio_bbox *) ((uint8_t *) sm->m_pstudiohdr + sm->m_pstudiohdr->hitboxindex);
+	for (i = 0; i < sm->m_pstudiohdr->numhitboxes; i++)
+	{
+		VectorScale (pbboxes[i].bbmin, scale, pbboxes[i].bbmin);
+		VectorScale (pbboxes[i].bbmax, scale, pbboxes[i].bbmax);
+	}
+
+	// scale bounding boxes
+	struct studio_seqdesc *pseqdesc = (struct studio_seqdesc *)((uint8_t *)sm->m_pstudiohdr + sm->m_pstudiohdr->seqindex);
+	for (i = 0; i < sm->m_pstudiohdr->numseq; i++)
+	{
+		VectorScale (pseqdesc[i].bbmin, scale, pseqdesc[i].bbmin);
+		VectorScale (pseqdesc[i].bbmax, scale, pseqdesc[i].bbmax);
+	}
+
+	// maybe scale exeposition, pivots, attachments
+}
+
 
 
 /*
@@ -592,9 +645,10 @@ inputs:
 	r_entorigin
 ================
 */
+static void sm_DrawPoints (struct studio_model *sm);
 void sm_DrawModel(struct studio_model *sm)
 {
-	int i;
+	unsigned int i;
 
 	if (!sm->m_pstudiohdr)
 		return;
@@ -607,13 +661,13 @@ void sm_DrawModel(struct studio_model *sm)
 	if (sm->m_pstudiohdr->numbodyparts == 0)
 		return;
 
-	glPushMatrix ();
+//	glPushMatrix ();
 
-    glTranslatef (sm->m_origin[0],  sm->m_origin[1],  sm->m_origin[2]);
+//    glTranslatef (sm->m_origin[0],  sm->m_origin[1],  sm->m_origin[2]);
 
-    glRotatef (sm->m_angles[1],  0, 0, 1);
-    glRotatef (sm->m_angles[0],  0, 1, 0);
-    glRotatef (sm->m_angles[2],  1, 0, 0);
+//    glRotatef (sm->m_angles[1],  0, 0, 1);
+//   glRotatef (sm->m_angles[0],  0, 1, 0);
+ //  glRotatef (sm->m_angles[2],  1, 0, 0);
 
 	sm_SetUpBones(sm);
 	sm_SetupLighting(sm);
@@ -780,19 +834,20 @@ void sm_DrawModel(struct studio_model *sm)
 
 ================
 */
-void sm_DrawPoints (struct studio_model *sm)
+static void sm_DrawPoints (struct studio_model *sm)
 {
-	int					i, j;
-	struct studio_mesh		*pmesh;
-	uint8_t				*pvertbone;
-	uint8_t				*pnormbone;
-	vec3_t				*pstudioverts;
-	vec3_t				*pstudionorms;
+	unsigned int		i, j;
+	int			cmd;
+	struct studio_mesh	*pmesh;
+	uint8_t			*pvertbone;
+	uint8_t			*pnormbone;
+	vec3_t			*pstudioverts;
+	vec3_t			*pstudionorms;
 	struct studio_texture	*ptexture;
-	float 				*av;
-	float				*lv;
-	float				lv_tmp;
-	short				*pskinref;
+	float 			*av;
+	float			*lv;
+	float			lv_tmp;
+	short			*pskinref;
 
 	pvertbone = ((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->vertinfoindex);
 	pnormbone = ((uint8_t *)sm->m_pstudiohdr + sm->m_pmodel->norminfoindex);
@@ -831,7 +886,7 @@ void sm_DrawPoints (struct studio_model *sm)
 		flags = ptexture[pskinref[pmesh[j].skinref]].flags;
 		for (i = 0; i < pmesh[j].numnorms; i++, lv += 3, pstudionorms++, pnormbone++)
 		{
-			sm_Lighting(sm, &lv_tmp, *pnormbone, flags, (float *)pstudionorms);
+			sm_Lighting(&lv_tmp, *pnormbone, flags, (float *)pstudionorms);
 
 			// FIX: move this check out of the inner loop
 			if (flags & STUDIO_NF_CHROME)
@@ -843,7 +898,7 @@ void sm_DrawPoints (struct studio_model *sm)
 		}
 	}
 
-	// glCullFace(GL_FRONT);
+	 glCullFace(GL_FRONT);
 
 	for (j = 0; j < sm->m_pmodel->nummesh; j++) 
 	{
@@ -861,12 +916,12 @@ void sm_DrawPoints (struct studio_model *sm)
 
 		if (ptexture[pskinref[pmesh->skinref]].flags & STUDIO_NF_CHROME)
 		{
-			while ( (i = *(ptricmds++)) )
+			while ( (cmd = *(ptricmds++)) )
 			{
-				if (i < 0)
+				if (cmd < 0)
 				{
 					glBegin( GL_TRIANGLE_FAN );
-					i = -i;
+					cmd = -cmd;
 				}
 				else
 				{
@@ -874,7 +929,7 @@ void sm_DrawPoints (struct studio_model *sm)
 				}
 
 
-				for( ; i > 0; i--, ptricmds += 4)
+				for( ; cmd > 0; cmd--, ptricmds += 4)
 				{
 					// FIX: put these in as integer coords, not floats
 					glTexCoord2f(g_chrome[ptricmds[1]][0]*s, g_chrome[ptricmds[1]][1]*t);
@@ -890,12 +945,12 @@ void sm_DrawPoints (struct studio_model *sm)
 		} 
 		else 
 		{
-			while ( (i = *(ptricmds++)) )
+			while ( (cmd = *(ptricmds++)) )
 			{
-				if (i < 0)
+				if (cmd < 0)
 				{
 					glBegin( GL_TRIANGLE_FAN );
-					i = -i;
+					cmd = -cmd;
 				}
 				else
 				{
@@ -903,7 +958,7 @@ void sm_DrawPoints (struct studio_model *sm)
 				}
 
 
-				for( ; i > 0; i--, ptricmds += 4)
+				for( ; cmd > 0; cmd--, ptricmds += 4)
 				{
 					// FIX: put these in as integer coords, not floats
 					glTexCoord2f(ptricmds[2]*s, ptricmds[3]*t);
