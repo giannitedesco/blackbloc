@@ -113,8 +113,8 @@ static void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, s
 			k = frame;
 			while (p->num.total <= k)
 			{
-				if ( j == 2 && pbone->parent == -1 )
-					printf("k=%i %u %u\n", k, p->num.total, p->num.valid);
+				//printf("j=%u k=%i %u %u\n", j, k,
+				//	p->num.total, p->num.valid);
 				k -= p->num.total;
 				p += p->num.valid + 1;
 			}
@@ -122,8 +122,7 @@ static void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, s
 			if (p->num.valid > k)
 			{
 				angle1[j] = (int16_t)le_16(p[k+1].value);
-				if ( j == 2 && pbone->parent == -1 )
-					printf("angle1=%f\n", angle1[j]);
+				//printf("j=%u angle1=%f\n", j, angle1[j]);
 
 				if (p->num.valid > k + 1)
 				{
@@ -165,8 +164,8 @@ static void sm_CalcBoneQuaternion(struct studio_model *sm, int frame, float s, s
 		AngleQuaternion( angle1, q1 );
 		AngleQuaternion( angle2, q2 );
 		QuaternionSlerp( q1, q2, s, q );
-		if ( pbone->parent == -1 )
-			printf(" -- %f/%f = %f\n", angle1[2], angle2[2], q[2]);
+		//if ( pbone->parent == -1 )
+			//printf(" -- %f/%f = %f\n", angle1[2], angle2[2], q[2]);
 	}
 	else
 	{

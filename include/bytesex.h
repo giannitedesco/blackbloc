@@ -40,7 +40,6 @@ static inline __attribute__((const)) float bswapf(float x)
 #define le_32(x) bswap32(x)
 #define le_16(x) bswap16(x)
 #define be_32(x) (x)
-#define be_16(x) (x)
 #elif __BYTE_ORDER == __LITTLE_ENDIAN
 #define le_float(x) (x)
 #define be_float(x) bswapf(x)

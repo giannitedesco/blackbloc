@@ -12,13 +12,13 @@
 #include <gl_render.h>
 
 #if 1
-int vid_x = 1280;
-int vid_y = 854;
+int vid_x = 1600;
+int vid_y = 1200;
 int vid_depth = 32;
 int vid_fullscreen = 1;
 #else
-int vid_x = 640;
-int vid_y = 480;
+int vid_x = 1024;
+int vid_y = 768;
 int vid_depth = 32;
 int vid_fullscreen = 0;
 #endif

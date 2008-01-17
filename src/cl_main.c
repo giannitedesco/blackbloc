@@ -56,25 +56,32 @@ int cl_init(void)
 		return 0;
 
 	ent.s.model_ops = &md2_ops;
+	ent.s.origin[X] = 500;
+	ent.s.origin[Y] = 450;
+	ent.s.origin[Z] = 1200;
+	v_copy(ent.s.oldorigin, ent.s.origin);
 	cl_model_load(&ent, "models/monsters/soldier/tris.md2");
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
 
+#if 0
 	sm_LoadModel(&g_studioModel, "data/mdl/forklift.mdl");
 	g_viewerSettings.speedScale = 1.0f;
 	g_viewerSettings.transparency = 1.0f;
 	g_viewerSettings.showHitBoxes = 1;
 	g_viewerSettings.showBones = 1;
 	g_viewerSettings.showTexture = 1;
-
+#endif
+	q2bsp_load("maps/q2dm1.bsp");
 	return 1;
 }
 
 void cl_render(void)
 {
+	q2bsp_render();
 	cl_model_render(&ent);
 	//particle_render();
-	sm_DrawModel(&g_studioModel);
+	//sm_DrawModel(&g_studioModel);
 }
 
 void cl_frame(void)

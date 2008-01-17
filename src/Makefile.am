@@ -34,6 +34,8 @@ blackbloc_SOURCES = \
 	img_png.c \
 	vector.c \
 	cl_cmd.c \
+	q2bsp.c \
+	q2wal.c \
 	q2pak.c \
 	gfile.c \
 	main.c \
