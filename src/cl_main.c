@@ -8,7 +8,6 @@
 
 #include <blackbloc.h>
 #include <sdl_keyb.h>
-#include <particle.h>
 #include <hud.h>
 #include <gfile.h>
 #include <q2pak.h>
@@ -48,9 +47,6 @@ int cl_init(void)
 	if ( !hud_init() )
 		return 0;
 
-	if ( particle_init() )
-		return 0;
-
 	ent.s.model_ops = &md2_ops;
 	ent.s.origin[X] = 500;
 	ent.s.origin[Y] = 450;
@@ -76,7 +72,6 @@ void cl_render(void)
 {
 	q2bsp_render();
 	cl_model_render(&ent);
-	//particle_render();
 	//sm_DrawModel(&g_studioModel);
 }
 

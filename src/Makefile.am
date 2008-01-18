@@ -26,7 +26,6 @@ blackbloc_SOURCES = \
 	sdl_mouse.c \
 	sdl_keyb.c \
 	teximage.c \
-	particle.c \
 	cl_main.c \
 	cl_move.c \
 	img_pcx.c \
