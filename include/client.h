@@ -28,11 +28,6 @@ struct cl_bind {
 extern struct playerstate me;
 extern frame_t client_frame;
 extern int cl_alive;
-extern int vid_x;
-extern int vid_y;
-extern int vid_depth;
-extern int vid_fullscreen;
-extern unsigned int vid_wireframe;
 extern float fps;
 extern float lerp;
 

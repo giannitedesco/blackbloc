@@ -7,7 +7,6 @@
 #define __HUD_HEADER_INCLUDED__
 
 int hud_init(void);
-int hud_init2(void);
 void hud_render(void);
 void hud_toggle_console(void);
 void hud_think(void);

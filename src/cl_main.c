@@ -7,7 +7,6 @@
 #include <SDL.h>
 
 #include <blackbloc.h>
-#include <gl_init.h>
 #include <sdl_keyb.h>
 #include <particle.h>
 #include <hud.h>
@@ -29,9 +28,6 @@ int cl_init(void)
 {
 	client_frame = 0;
 
-	if ( hud_init() )
-		return 0;
-
 	/* Load quake2 pak files */
 	q2pak_add("data/pak0.pak");
 	q2pak_add("data/pak1.pak");
@@ -46,10 +42,10 @@ int cl_init(void)
 	cl_cmd_bind("space", "+jump");
 	cl_cmd_bind("c", "+crouch");
 
-	if ( !gl_init(vid_x,vid_y,vid_depth,vid_fullscreen) )
+	if ( !gl_init(1600, 1200, 24, 1) )
 		return 0;
 
-	if ( hud_init2() )
+	if ( !hud_init() )
 		return 0;
 
 	if ( particle_init() )

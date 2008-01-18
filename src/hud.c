@@ -44,6 +44,7 @@ static int con_x;
 static int con_y;
 static int hud_x;
 static int hud_y;
+static unsigned int vid_x, vid_y;
 static int ofs;
 
 static int showcon = 0;
@@ -51,6 +52,10 @@ static int showcon = 0;
 #define HUD_ALPHA (0.6)
 vector_t hud_col;
 vector_t con_col;
+
+static int hudmap_assure(unsigned int con_x, unsigned int con_y)
+{
+}
 
 static inline void hud_char(struct image *i,
 				vector_t color,
@@ -301,13 +306,16 @@ end:
 /* Pre-initialise for con_printf() bufffers etc.. */
 int hud_init(void)
 {
+	vid_x = gl_render_vidx();
+	vid_y = gl_render_vidy();
+
 	con_x = vid_x / CON_CHAR;
 	con_y = ((vid_y / CON_CHAR) / 4) * 3;
 
 	hud_x = vid_x / HUD_CHAR;
 	hud_y = vid_y / HUD_CHAR;
 
-	if ( !(hudmap=calloc(1,  con_x * con_y)) ) {
+	if ( !(hudmap = calloc(1,  con_x * con_y)) ) {
 		perror("calloc");
 		return -1;
 	}
@@ -325,25 +333,19 @@ int hud_init(void)
 	con_col[B] = 1.0;
 	con_col[A] = 1.0;
 
-	return 0;
-}
-
-/* Initialise display part */
-int hud_init2(void)
-{
 	if ( !(conback=pcx_get_by_name("pics/conback.pcx")) )
-		return -1;
+		return 0;
 
 	if( !(conchars=pcx_get_by_name("pics/conchars.pcx")) )
-		return -1;
+		return 0;
 	
 	if ( !(hudchars=png_get_by_name("pics/hudchars.png")) )
-		return -1;
+		return 0;
 
 	if ( !(crosshair=png_get_by_name("pics/crosshair.png")) )
-		return -1;
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 void con_input_char(uint16_t k)

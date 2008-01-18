@@ -29,7 +29,6 @@ blackbloc_SOURCES = \
 	particle.c \
 	cl_main.c \
 	cl_move.c \
-	gl_init.c \
 	img_pcx.c \
 	img_png.c \
 	vector.c \

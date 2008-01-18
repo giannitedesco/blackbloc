@@ -11,19 +11,81 @@
 #include <hud.h>
 #include <gl_render.h>
 
-#if 1
-int vid_x = 1600;
-int vid_y = 1200;
-int vid_depth = 32;
-int vid_fullscreen = 1;
-#else
-int vid_x = 1024;
-int vid_y = 768;
-int vid_depth = 32;
-int vid_fullscreen = 0;
-#endif
+static unsigned int vid_x;
+static unsigned int vid_y;
+static unsigned int vid_depth;
+static unsigned int vid_fullscreen;
+static unsigned int vid_wireframe;
+static SDL_Surface *screen;
 
-unsigned int vid_wireframe;
+unsigned int gl_render_vidx(void)
+{
+	return vid_x;
+}
+
+unsigned int gl_render_vidy(void)
+{
+	return vid_y;
+}
+
+unsigned int gl_render_toggle_wireframe(void)
+{
+	return (vid_wireframe = !!vid_wireframe);
+}
+
+/* Initialise openGL */
+int gl_init(unsigned int vx, unsigned int vy, unsigned int d, unsigned int fs)
+{
+	int flags = SDL_OPENGL;
+
+	if ( screen ) {
+		con_printf("TODO: Fix mode change\n");
+		return 0;
+	}
+
+	if ( fs )
+		flags |= SDL_FULLSCREEN;
+
+	/* Need 5 bits of color depth for each color */
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+
+	/* Enable double buffering */
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
+	/* Setup the depth buffer, 16 deep */
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+
+	/* Setup the SDL display */
+	screen = SDL_SetVideoMode(vx,vy,d,flags);
+	if ( screen == NULL ) {
+		con_printf("gl_init: SDL_SetVideoMode: %s\n", SDL_GetError());
+		return 0;
+	}
+
+	vid_x = vx;
+	vid_y = vy;
+	vid_depth = d;
+	vid_fullscreen = fs;
+
+	SDL_WM_SetCaption("blackbloc", "blackbloc");
+	SDL_ShowCursor(0);
+
+	/* Print out OpenGL info */
+	con_printf("gl_vidmode: %i x %i x %i\n", vid_x, vid_y, vid_depth);
+	con_printf("gl_vendor: %s\n", glGetString(GL_VENDOR));
+	con_printf("gl_renderer: %s\n", glGetString(GL_RENDERER));
+	con_printf("gl_version: %s\n", glGetString(GL_VERSION));
+	con_printf("extensions: %s\n", glGetString(GL_EXTENSIONS));
+
+	glClearColor(0, 0, 0, 1);
+	glShadeModel(GL_SMOOTH);
+	glDisable(GL_LIGHTING);
+
+	return 1;
+}
 
 /* Help us to setup the viewing frustum */
 static void gl_frustum(GLdouble fovy,

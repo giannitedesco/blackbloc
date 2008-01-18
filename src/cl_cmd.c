@@ -5,6 +5,7 @@
 */
 
 #include <blackbloc.h>
+#include <gl_render.h>
 #include <client.h>
 #include <hud.h>
 
@@ -54,7 +55,7 @@ static void clcmd_quit(int s)
 
 static void clcmd_wireframe(int s)
 {
-	vid_wireframe = !vid_wireframe;
+	gl_render_toggle_wireframe();
 }
 
 static void clcmd_binds(int s)
