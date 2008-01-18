@@ -6,7 +6,10 @@
 * QuakeII BSP map file loader.
 *
 * TODO
+*  o Use multi-texture rendering to improve performance
+*  o Use higher res textures with shaders
 *  o Frustum / Bounding Box culling
+*  o Simple gravity / physics model
 *  o Load submodels
 *  o Load portals
 *  o Lots of tidying up and bugfixes
@@ -50,9 +53,9 @@ static int allocated[BLOCK_WIDTH];
 static unsigned int lm_textures;
 static float s_blocklights[34*34*3];
 
-void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride);
+static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride);
 
-void lm_upload_block(void)
+static void lm_upload_block(void)
 {
 	int texture;
 
@@ -67,12 +70,12 @@ void lm_upload_block(void)
 	current_lightmap_texture++;
 }
 
-void lm_init_block(void)
+static void lm_init_block(void)
 {
 	memset(allocated, 0, sizeof(allocated));
 }
 
-int lm_alloc_block(int w, int h, int *x, int *y)
+static int lm_alloc_block(int w, int h, int *x, int *y)
 {
 	int i, j;
 	int best, best2;
@@ -102,7 +105,7 @@ int lm_alloc_block(int w, int h, int *x, int *y)
 	return 1;
 }
 
-void build_lightmap(struct bsp_msurface *surf)
+static void build_lightmap(struct bsp_msurface *surf)
 {
 	int smax, tmax;
 	unsigned char *base;
@@ -136,7 +139,7 @@ void build_lightmap(struct bsp_msurface *surf)
 	R_BuildLightMap(surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
 }
 
-void build_polygon(struct bsp_msurface *fa)
+static void build_polygon(struct bsp_msurface *fa)
 {
 	int i, lindex, lnumverts;
 	struct bsp_medge *r_pedge;
@@ -197,7 +200,7 @@ void build_polygon(struct bsp_msurface *fa)
 	poly->numverts = lnumverts;
 }
 
-void CalcSurfaceExtents(struct bsp_msurface *s)
+static void CalcSurfaceExtents(struct bsp_msurface *s)
 {
 	float	mins[2], maxs[2], val;
 	int		i,j, e;
@@ -241,7 +244,7 @@ void CalcSurfaceExtents(struct bsp_msurface *s)
 	}
 }
 
-int q2bsp_submodels(void *data, int len)
+static int q2bsp_submodels(void *data, int len)
 {
 	struct bsp_model *in;
 	struct bsp_model *out;
@@ -277,7 +280,7 @@ static void node_set_parent(struct bsp_mnode *n, struct bsp_mnode *p)
 	node_set_parent(n->children[1], n);
 }
 
-int q2bsp_nodes(void *data, int len)
+static int q2bsp_nodes(void *data, int len)
 {
 	struct bsp_node *in;
 	struct bsp_mnode *out;
@@ -334,7 +337,7 @@ int q2bsp_nodes(void *data, int len)
 	return 0;
 }
 
-int q2bsp_leafs(void *data, int len)
+static int q2bsp_leafs(void *data, int len)
 {
 	struct bsp_leaf *in;
 	struct bsp_mleaf *out;
@@ -383,7 +386,7 @@ int q2bsp_leafs(void *data, int len)
 	return 0;
 }
 
-int q2bsp_visibility(void *data, int len)
+static int q2bsp_visibility(void *data, int len)
 {
 	struct bsp_vis *out;
 	struct bsp_vis *in = data;
@@ -414,7 +417,7 @@ int q2bsp_visibility(void *data, int len)
 	return 0;
 }
 
-int q2bsp_marksurfaces(void *data, int len)
+static int q2bsp_marksurfaces(void *data, int len)
 {
 	int i, j, count;
 	short *in;
@@ -453,7 +456,7 @@ int q2bsp_marksurfaces(void *data, int len)
 	return 0;
 }
 
-int q2bsp_faces(void *data, int len)
+static int q2bsp_faces(void *data, int len)
 {
 	struct bsp_face *in;
 	struct bsp_msurface *out;
@@ -528,7 +531,7 @@ int q2bsp_faces(void *data, int len)
 	return 0;
 }
 
-int q2bsp_planes(void *data, int len)
+static int q2bsp_planes(void *data, int len)
 {
 	struct bsp_plane *in;
 	struct bsp_mplane *out;
@@ -584,13 +587,13 @@ int q2bsp_planes(void *data, int len)
 	return 0;
 }
 
-int q2bsp_lighting(void *data, int len)
+static int q2bsp_lighting(void *data, int len)
 {
 	lightdata = data;
 	return 0;
 }
 
-int q2bsp_surfedges(void *data, int len)
+static int q2bsp_surfedges(void *data, int len)
 {
 	int *in, *out;
 	int i, count;
@@ -622,7 +625,7 @@ int q2bsp_surfedges(void *data, int len)
 	return 0;
 }
 
-int q2bsp_edges(void *data, int len)
+static int q2bsp_edges(void *data, int len)
 {
 	struct bsp_edge *in;
 	struct bsp_medge *out;
@@ -657,7 +660,7 @@ int q2bsp_edges(void *data, int len)
 	return 0;
 }
 
-int q2bsp_vertexes(void *data, int len)
+static int q2bsp_vertexes(void *data, int len)
 {
 	struct bsp_vertex *in, *out;
 	int i, count;
@@ -691,7 +694,7 @@ int q2bsp_vertexes(void *data, int len)
 	return 0;
 }
 
-int q2bsp_texinfo(void *data, int len)
+static int q2bsp_texinfo(void *data, int len)
 {
 	struct bsp_texinfo *in;
 	struct bsp_mtexinfo *out, *step;
@@ -828,7 +831,7 @@ err:
 	return -1;
 }
 
-void q2bsp_surfrender(struct bsp_msurface *s)
+static void q2bsp_surfrender(struct bsp_msurface *s)
 {
 	int i;
 	float *v;
@@ -837,19 +840,24 @@ void q2bsp_surfrender(struct bsp_msurface *s)
 	int lmtex = s->lightmaptexturenum;
 
 	/* Draw lightmap */
+#if 1
 	if ( lm ) {
 		glBindTexture(GL_TEXTURE_2D, lm_textures + lmtex);
 		glBegin(GL_POLYGON);
-		v=p->verts[0];
-		for(i=0; i<p->numverts; i++, v+=VERTEXSIZE) {
+		v = p->verts[0];
+		for(i = 0; i < p->numverts; i++, v += VERTEXSIZE) {
 			glTexCoord2f(v[5],v[6]);
 			glVertex3fv(v);
 		}
 		glEnd();
 
 		glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 	}
+#endif
 
+#if 1
 	img_bind(s->texinfo->image);
 	glBegin(GL_POLYGON);
 	v=p->verts[0];
@@ -858,10 +866,10 @@ void q2bsp_surfrender(struct bsp_msurface *s)
 		glVertex3fv(v);
 	}
 	glEnd();
+#endif
 
-	if ( lm ) {
-		glDisable(GL_BLEND);
-	}
+	glDisable(GL_BLEND);
+	glDepthMask(1);
 }
 
 static int cull_box(vector_t mins, vector_t maxs)
@@ -947,7 +955,7 @@ static void q2bsp_recurse(struct bsp_mnode *n, vector_t org, int visframe)
 	q2bsp_recurse(n->children[!side], org, visframe);
 }
 
-static inline void decompress_vis(int ofs)
+static void decompress_vis(int ofs)
 {
 	unsigned int c, v;
 	unsigned int b;
@@ -970,7 +978,7 @@ static inline void decompress_vis(int ofs)
 	}
 }
 
-static inline void mark_leafs(int newc, int visframe)
+static void mark_leafs(int newc, int visframe)
 {
 	struct bsp_mleaf *leaf;
 	struct bsp_mnode *node;
@@ -996,7 +1004,7 @@ static inline void mark_leafs(int newc, int visframe)
 	}
 }
 
-static inline void mark_all(int visframe)
+static void mark_all(int visframe)
 {
 	int i;
 
@@ -1063,7 +1071,7 @@ void q2bsp_render(void)
 	glEnable(GL_BLEND);
 }
 
-void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride)
+static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride)
 {
 	int			smax, tmax;
 	int			r, g, b, a, max;
