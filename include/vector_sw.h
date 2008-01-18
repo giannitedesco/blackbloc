@@ -5,8 +5,8 @@
 *
 * Software reference implementation of vector operations.
 */
-#ifndef __VECTOR_SW_HEADER_INCLUDED__
-#define __VECTOR_SW_HEADER_INCLUDED__
+#ifndef _VECTOR_SW_HEADER_INCLUDED__
+#define _VECTOR_SW_HEADER_INCLUDED__
 
 /* func: square root
  * desc: gets the square root of a scalar value
@@ -21,7 +21,7 @@
  * notes: v is clobberd (duh)
 */
 #ifndef V_ZERO
-static inline void __vfunc
+static inline void _vfunc
 v_zero(vector_t v)
 {
 	v[X]=0;
@@ -35,7 +35,7 @@ v_zero(vector_t v)
  * notes: d is clobbered (duh)
 */
 #ifndef V_COPY
-static inline void __vfunc
+static inline void _vfunc
 v_copy(vector_t d, const vector_t s)
 {
 	d[X]=s[X];
@@ -49,7 +49,7 @@ v_copy(vector_t d, const vector_t s)
  * notes: v is modified in place
 */
 #ifndef V_INVERT
-static inline void __vfunc
+static inline void _vfunc
 v_invert(vector_t v)
 {
 	v[X] = -v[X];
@@ -63,7 +63,7 @@ v_invert(vector_t v)
  * notes: v is modified in place
 */
 #ifndef V_SCALE
-static inline void __vfunc
+static inline void _vfunc
 v_scale(vector_t v, const scalar_t s)
 {
 	v[X] *= s;
@@ -95,7 +95,7 @@ v_len(const vector_t v)
  * notes: v is modified
 */
 #ifndef V_NORMALIZE
-static inline void __vfunc
+static inline void _vfunc
 v_normalize(vector_t v)
 {
 	scalar_t len=v_len(v);
@@ -115,7 +115,7 @@ v_normalize(vector_t v)
  * notes: d is modified
 */
 #ifndef V_ADD
-static inline void __vfunc
+static inline void _vfunc
 v_add(vector_t d, const vector_t v1, const vector_t v2)
 {
 	d[X]=v1[X]+v2[X];
@@ -129,7 +129,7 @@ v_add(vector_t d, const vector_t v1, const vector_t v2)
  * notes: d is modified
 */
 #ifndef V_SUB
-static inline void __vfunc
+static inline void _vfunc
 v_sub(vector_t d, const vector_t v1, const vector_t v2)
 {
 	d[X]=v1[X]-v2[X];
@@ -143,7 +143,7 @@ v_sub(vector_t d, const vector_t v1, const vector_t v2)
  * notes: none
 */
 #ifndef V_CROSSPRODUCT
-static inline void __vfunc
+static inline void _vfunc
 v_crossproduct(vector_t d, const vector_t v1, const vector_t v2)
 {
 	d[X] = (v1[Y] * v2[Z]) - (v1[Z] * v2[Y]);
@@ -157,7 +157,7 @@ v_crossproduct(vector_t d, const vector_t v1, const vector_t v2)
  * notes: Vectors must be normalized
 */
 #ifndef V_DOTPRODUCT
-static inline scalar_t __vfunc
+static inline scalar_t _vfunc
 v_dotproduct(const vector_t v1, const vector_t v2)
 {
 	return (v1[X] * v2[X]) +
@@ -171,7 +171,7 @@ v_dotproduct(const vector_t v1, const vector_t v2)
  * notes: d is modified
 */
 #ifndef V_MULTADD
-static inline void __vfunc
+static inline void _vfunc
 v_multadd(vector_t d, scalar_t scale, const vector_t v1, const vector_t v2)
 {
 	d[X] = v1[X] + scale * v2[X];
@@ -180,4 +180,4 @@ v_multadd(vector_t d, scalar_t scale, const vector_t v1, const vector_t v2)
 }
 #endif
 
-#endif /* __VECTOR_SW_HEADER_INCLUDED__ */
+#endif /* _VECTOR_SW_HEADER_INCLUDED__ */

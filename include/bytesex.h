@@ -1,14 +1,14 @@
 #ifndef __BYTESEX_H
 #define __BYTESEX_H
 
-static inline __attribute__((const)) uint16_t bswap16(uint16_t x)
+static inline _constfn uint16_t bswap16(uint16_t x)
 {
 	return ((uint16_t)(
 		(((uint16_t)(x) & (uint16_t)0x00ffU) << 8) |
 	 	(((uint16_t)(x) & (uint16_t)0xff00U) >> 8) ));
 }
 
-static inline __attribute__((const)) uint32_t bswap32(uint32_t x)
+static inline _constfn uint32_t bswap32(uint32_t x)
 {
 	return ((uint32_t)(
 		(((uint32_t)(x) & (uint32_t)0x000000ffUL) << 24) |
@@ -17,7 +17,7 @@ static inline __attribute__((const)) uint32_t bswap32(uint32_t x)
 		(((uint32_t)(x) & (uint32_t)0xff000000UL) >> 24) ));
 }
 
-static inline __attribute__((const)) float bswapf(float x)
+static inline _constfn float bswapf(float x)
 {
 	union {
 		float f;

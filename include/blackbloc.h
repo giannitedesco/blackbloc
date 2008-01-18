@@ -8,10 +8,24 @@
 #ifndef __BLACKBLOC_HEADER_INCLUDED__
 #define __BLACKBLOC_HEADER_INCLUDED__
 
-#include <stdlib.h>
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#if HAVE_STDINT_H
 #include <stdint.h>
-#include <errno.h>
+#endif
+#if HAVE_STRING_H
 #include <string.h>
+#endif
+#if HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+#if HAVE_ERRNO_H
+#include <errno.h>
+#endif
+
+#include <compiler.h>
 #include <bytesex.h>
 #include <vector.h>
 

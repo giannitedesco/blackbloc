@@ -21,8 +21,8 @@
 * OpenGL functions
 *  o v_render() - render a vector
 */
-#ifndef __VECTOR_HEADER_INCLUDED__
-#define __VECTOR_HEADER_INCLUDED__
+#ifndef _VECTOR_HEADER_INCLUDED__
+#define _VECTOR_HEADER_INCLUDED__
 
 #include <math.h>
 #include <config.h>
@@ -34,17 +34,17 @@
 /* Defined to the maximum possible alignment to
  * keep structure sizes the same across the board
 */
-#define __valign __attribute__((aligned(16)))
+#define _valign _align(16)
 
 /* Thus far all of our vector operations are all pure functions. The
  * compiler can better optimise them if we make that explicit
 */
-#define __vfunc
+#define _vfunc
 
 /* basic scalar type */
 typedef float scalar_t;
 
-typedef float vector_t[4] __valign;
+typedef float vector_t[4] _valign;
 
 /* w is a scale value but is mostly ignored, we use it to make
  * 4x4 matrices homogenous so that all affine transformations
@@ -85,7 +85,7 @@ typedef float vector_t[4] __valign;
  * desc: Renders a vertex
  * notes: none
 */
-static inline void __vfunc
+static inline void _vfunc
 v_render(const vector_t v)
 {
 	glVertex3fv((GLfloat *)v);
@@ -93,4 +93,4 @@ v_render(const vector_t v)
 
 void v_angles(vector_t angles, vector_t forward, vector_t right, vector_t up);
 
-#endif /* __VECTOR_HEADER_INCLUDED__ */
+#endif /* _VECTOR_HEADER_INCLUDED__ */

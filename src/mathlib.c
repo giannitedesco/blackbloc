@@ -11,6 +11,7 @@
 // mathlib.c -- math primitives
 
 #include <mathlib.h>
+#include <compiler.h>
 #include <vector.h>
 
 /* #include "cmdlib.h" */

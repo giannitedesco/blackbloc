@@ -14,6 +14,7 @@
 #include <string.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
+#include <compiler.h>
 #include <bytesex.h>
 #include <studio_model.h>
 #include <render_settings.h>

@@ -5,8 +5,8 @@
 *
 * Altivec enhanced vector operations.
 */
-#ifndef __VECTOR_ALTIVEC_HEADER_INCLUDED__
-#define __VECTOR_ALTIVEC_HEADER_INCLUDED__
+#ifndef _VECTOR_ALTIVEC_HEADER_INCLUDED__
+#define _VECTOR_ALTIVEC_HEADER_INCLUDED__
 
 /* Do we dare allow the compiler to optimize?
  * Doesn't seem to make any difference...
@@ -25,7 +25,7 @@
  * fuck up is with multi-threading.
 */
 #define V_CTOR
-static inline void __vfunc
+static inline void _vfunc
 v_ctor()
 {
 	unsigned long val = ALTIVEC_REGISTERS;
@@ -38,7 +38,7 @@ v_ctor()
 }
 
 #define V_ADD
-static inline void __vfunc
+static inline void _vfunc
 v_add(vector_t d, const vector_t v1, const vector_t v2)
 {
 	v_asm (
@@ -50,7 +50,7 @@ v_add(vector_t d, const vector_t v1, const vector_t v2)
 }
 
 #define V_SUB
-static inline void __vfunc
+static inline void _vfunc
 v_sub(vector_t d, const vector_t v1, const vector_t v2)
 {
 	v_asm (
@@ -61,4 +61,4 @@ v_sub(vector_t d, const vector_t v1, const vector_t v2)
 	:: "r"(d), "r" (v1), "r" (v2) );
 }
 
-#endif /* __VECTOR_ALTIVEC_HEADER_INCLUDED__ */
+#endif /* _VECTOR_ALTIVEC_HEADER_INCLUDED__ */

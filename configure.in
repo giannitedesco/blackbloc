@@ -54,6 +54,7 @@ else
 	AC_MSG_ERROR(Unable to find OpenGL headers and libraries)
 fi
 
+AC_CHECK_HEADERS([stdint.h stdlib.h errno.h string.h])
 AC_CHECK_HEADERS([altivec.h], [ CFLAGS="$CFLAGS -mabi=altivec" ])
 
 SDL_LIBS="$LIBS $GL_LIBS"

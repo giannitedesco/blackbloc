@@ -15,6 +15,7 @@
 #include <SDL.h>
 
 #include <blackbloc.h>
+#include <gl_render.h>
 #include <client.h>
 #include <gfile.h>
 #include <teximage.h>
@@ -52,10 +53,6 @@ static int showcon = 0;
 #define HUD_ALPHA (0.6)
 vector_t hud_col;
 vector_t con_col;
-
-static int hudmap_assure(unsigned int con_x, unsigned int con_y)
-{
-}
 
 static inline void hud_char(struct image *i,
 				vector_t color,
