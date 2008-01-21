@@ -30,7 +30,7 @@ unsigned int gl_render_vidy(void)
 
 unsigned int gl_render_toggle_wireframe(void)
 {
-	return (vid_wireframe = !!vid_wireframe);
+	return (vid_wireframe = !vid_wireframe);
 }
 
 /* Initialise openGL */

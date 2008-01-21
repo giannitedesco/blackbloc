@@ -1,47 +1,56 @@
-Things to do
-------------
-Infrastructure:
+Infrastructure
+--------------
  o sort out API mess
    - re-work images a bit
-   - add a model type API
+   - refine model type API for skeletal animation
+   - tidy up keyboard / cmd_bind code
+   - render context -> game context
+     - when render settings change, game needs to know
+     - when game stuff changes, binds may change
  o Re-think console and HUD
    - much can be done before rendering to texture
    - eg. line buffered approach, store array of pointers to last 1 page worth
      of lines
    - support shift keys, etc..
- o tidy up input layer
  o Screenshots
  o Mipmap support for textures
- o Shader support
+ o Shader infrastructure 
+ o New game-file format (indexes + sha1sums)
 
 World
 -----
- o Collision model / gravity
- o Basic physics model for smooth movement
- o Translucent water + fresnel effect
- o Stencil shadows
- o Spherical Harmonic lighting
+ o we do check polys against view frustum in bsp render yeah?
+ o physics model for collisions, gravity, smooth movement
+ o Calculate PRT 
+
+Models
+------
+ x Hook up animation code
+ o Allow multiple models
+ o Attach heads + weapons
+ o Texture support
+ o Calculate normals (in tangent space?)
+ o Normal mapping
+
+Lighting Model
+--------------
+ o Realistic water
+ o Stencil shadows for models
+ o Compute PRT wavelet coefficients for maps
+ o need access to light-source data for normal maps both on
+   world and on models. how to handle multiple lights?
+   - could select dominant lights for each scene, at least for shadows
+   - theres about 8 opengl light sources
+   - possibly LOD system falling back to lightmaps
 
 BSP tools
 ---------
  o Import the code and get it compiling and tested
- o Replace rad with spherical harmonics coefficients etc..
+ o Replace rad with wavelet PRT info etc..
+ o Normal-map support
+ o Allow patches aswell as brushes
+ o new output file format? keep portals?
 
-Models
-------
- o half-life studio model support (UPDATE: prolly scrap this)
-   x fix endian bugs
-   - fix render bugs
-   - use gfile framework
-   - use model framework
-   - use texture framework
- o Normal maps for details
- o New character models + kinematics
-
-Frustum Culling
----------------
- Frustum is 6 planes: 4 sides, near and far
- The dot-product of a point and a plane is the distance.
- Radius is abs(the furthest extent)
- If distance + radius > 0 then point is inside the plane.
- If point is inside all 6 planes, job done
+Game
+----
+Hehehe, long way off yet

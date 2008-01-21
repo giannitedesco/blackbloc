@@ -12,8 +12,8 @@
 #include <gfile.h>
 #include <q2pak.h>
 #include <md2.h>
+#include <md5model.h>
 #include <client.h>
-#include <studio_model.h>
 
 frame_t client_frame;
 int cl_alive = 1;
@@ -41,6 +41,7 @@ int cl_init(void)
 	cl_cmd_bind("space", "+jump");
 	cl_cmd_bind("c", "+crouch");
 
+	//if ( !gl_init(1680, 1050, 24, 1) )
 	if ( !gl_init(1600, 1200, 24, 1) )
 		return 0;
 
@@ -56,23 +57,18 @@ int cl_init(void)
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
 
-#if 0
-	sm_LoadModel(&g_studioModel, "data/mdl/forklift.mdl");
-	g_viewerSettings.speedScale = 1.0f;
-	g_viewerSettings.transparency = 1.0f;
-	g_viewerSettings.showHitBoxes = 1;
-	g_viewerSettings.showBones = 1;
-	g_viewerSettings.showTexture = 1;
-#endif
 	q2bsp_load("maps/q2dm1.bsp");
+
+	md5_load("d3/demo/models/md5/monsters/zombies/labcoatzombie.md5mesh",
+		"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
 	return 1;
 }
 
 void cl_render(void)
 {
 	q2bsp_render();
+	md5_render();
 	cl_model_render(&ent);
-	//sm_DrawModel(&g_studioModel);
 }
 
 void cl_frame(void)
@@ -80,7 +76,6 @@ void cl_frame(void)
 	/* Set the frame number */
 	client_frame++;
 
-	sm_SetFrame(&g_studioModel, client_frame);
 	/* Process event queue */
 	sdl_keyb_runq();
 

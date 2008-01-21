@@ -127,6 +127,7 @@ void md2_render(struct cl_ent *ent)
 
 	/* For dynamic lighting */
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glEnable(GL_DEPTH_TEST);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 
 	md2_bbox(org, rot, ent->s.mins, ent->s.maxs);
@@ -166,4 +167,5 @@ void md2_render(struct cl_ent *ent)
 	}
 
 	glCullFace(GL_BACK);
+	glDisable(GL_DEPTH_TEST);
 }
