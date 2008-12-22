@@ -25,7 +25,7 @@ void sdl_keyb_unbind(int k)
 	binds[k].cmd = NULL;
 }
 
-static const char *keymap[KEY_MAX]={
+static const char * const keymap[KEY_MAX]={
 	[ SDLK_a ] = "a",
 	[ SDLK_b ] = "b",
 	[ SDLK_c ] = "c",
