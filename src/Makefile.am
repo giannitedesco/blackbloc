@@ -3,18 +3,12 @@
 INCLUDES = \
 	-I../include
 
-bin_PROGRAMS = blackbloc
+bin_PROGRAMS = blackbloc mkgfile
 
-#blackbloc_svr_LDADD = @MATHLIB@
-#blackbloc_svr_SOURCES = \
-#	sv_spawn.c \
-#	sv_main.c \
-#	sv_net.c \
-#	vector.c \
-#	netbuf.c \
-#	gfile.c \
-#	q2pak.c \
-#	md2.c
+mkgfile_SOURCES = \
+	mkgfile.c \
+	mpool.c \
+	gang.c
 
 blackbloc_LDADD = -lpng @MATHLIB@ @SDL_LIBS@
 blackbloc_SOURCES = \
@@ -33,11 +27,7 @@ blackbloc_SOURCES = \
 	cl_cmd.c \
 	q2bsp.c \
 	q2wal.c \
-	q2pak.c \
 	gfile.c \
 	main.c \
 	hud.c \
 	md2.c
-
-#	netbuf.c
-#	cl_net.c

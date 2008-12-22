@@ -9,7 +9,7 @@
 #define MIPLEVELS 4
 
 struct image {
-	char *name;
+	const char *name;
 	int ref;
 	GLuint texnum;
 
@@ -20,45 +20,22 @@ struct image {
 	/* source image */
 	struct gfile f;
 	uint32_t s_width, s_height;
-	uint8_t *s_pixels;
+	const uint8_t *s_pixels;
 
 	/* Final scaled image */
 	struct {
 		uint8_t *pixels;
 		unsigned int width, height;
 	}mipmap[MIPLEVELS];
-
-	u_int32_t flags;
 };
 
-int img_upload_generic(struct image *i, GLint format);
-int img_upload_rgb(struct image *);
-int img_upload_rgba(struct image *);
-int img_upload_rgb2rgba(struct image *);
-void img_free_unload(struct image *);
-
-static inline void img_get(struct image *i)
-{
-	if ( i->ref == 0 ) {
-		glGenTextures(1, &i->texnum);
-		if ( !i->upload(i) ) {
-			/* TODO: Use default texture */
-		}
-	}
-
-	i->ref++;
-}
-
-static inline void img_put(struct image *i)
-{
-	i->ref--;
-	if ( i->ref == 0 )
-		glDeleteTextures(1, &i->texnum);
-}
-
-static inline void img_bind(struct image *i)
-{
-	glBindTexture(GL_TEXTURE_2D, i->texnum);
-}
+int img_upload_generic(struct image *img, GLint format);
+int img_upload_rgb(struct image *img);
+int img_upload_rgba(struct image *img);
+int img_upload_rgb2rgba(struct image *img);
+void img_free_unload(struct image *img);
+void img_put(struct image *img);
+void img_get(struct image *img);
+void img_bind(struct image *img);
 
 #endif /* __TEXIMAGE_HEADER_INCLUDED__ */

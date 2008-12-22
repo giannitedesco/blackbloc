@@ -763,18 +763,18 @@ int q2bsp_load(char *name)
 	uint32_t *tmp;
 	int i;
 
-	if ( gfile_open(&f, name) ) {
+	if ( !game_open(&f, name) ) {
 		con_printf("bsp: %s not found\n", name);
 		goto err;
 	}
 
-	if ( f.len < sizeof(struct bsp_header) ) {
+	if ( f.f_len < sizeof(struct bsp_header) ) {
 		con_printf("bsp: %s: too small for header\n", name);
 		goto err_close;
 	}
 
 	/* Byteswap header */
-	memcpy(&hdr, f.data, sizeof(hdr));
+	memcpy(&hdr, f.f_ptr, sizeof(hdr));
 	tmp=(uint32_t *)&hdr;
 	for(i=0; i<sizeof(hdr)/sizeof(*tmp); i++) {
 		tmp[i]=le_32(tmp[i]);
@@ -790,43 +790,43 @@ int q2bsp_load(char *name)
 
 	/* Check all lumps are in the file */
 	for(i=0; i<HEADER_LUMPS; i++) {
-		if ( hdr.lumps[i].ofs + hdr.lumps[i].len > f.len ) {
+		if ( hdr.lumps[i].ofs + hdr.lumps[i].len > f.f_len ) {
 			con_printf("bsp: %s: lump %i is fucked up\n",
 				name, i);
 			goto err_close;
 		}
 	}
 
-	q2bsp_vertexes(f.data + hdr.lumps[LUMP_VERTEXES].ofs,
+	q2bsp_vertexes(f.f_ptr + hdr.lumps[LUMP_VERTEXES].ofs,
 			hdr.lumps[LUMP_VERTEXES].len);
-	q2bsp_edges(f.data + hdr.lumps[LUMP_EDGES].ofs,
+	q2bsp_edges(f.f_ptr + hdr.lumps[LUMP_EDGES].ofs,
 			hdr.lumps[LUMP_EDGES].len);
-	q2bsp_surfedges(f.data + hdr.lumps[LUMP_SURFEDGES].ofs,
+	q2bsp_surfedges(f.f_ptr + hdr.lumps[LUMP_SURFEDGES].ofs,
 			hdr.lumps[LUMP_SURFEDGES].len);
-	q2bsp_lighting(f.data + hdr.lumps[LUMP_LIGHTING].ofs,
+	q2bsp_lighting(f.f_ptr + hdr.lumps[LUMP_LIGHTING].ofs,
 			hdr.lumps[LUMP_LIGHTING].len);
-	q2bsp_planes(f.data + hdr.lumps[LUMP_PLANES].ofs,
+	q2bsp_planes(f.f_ptr + hdr.lumps[LUMP_PLANES].ofs,
 			hdr.lumps[LUMP_PLANES].len);
-	q2bsp_texinfo(f.data + hdr.lumps[LUMP_TEXINFO].ofs,
+	q2bsp_texinfo(f.f_ptr + hdr.lumps[LUMP_TEXINFO].ofs,
 			hdr.lumps[LUMP_TEXINFO].len);
-	q2bsp_faces(f.data + hdr.lumps[LUMP_FACES].ofs,
+	q2bsp_faces(f.f_ptr + hdr.lumps[LUMP_FACES].ofs,
 			hdr.lumps[LUMP_FACES].len);
-	q2bsp_marksurfaces(f.data + hdr.lumps[LUMP_LEAFFACES].ofs,
+	q2bsp_marksurfaces(f.f_ptr + hdr.lumps[LUMP_LEAFFACES].ofs,
 			hdr.lumps[LUMP_LEAFFACES].len);
-	q2bsp_visibility(f.data + hdr.lumps[LUMP_VISIBILITY].ofs,
+	q2bsp_visibility(f.f_ptr + hdr.lumps[LUMP_VISIBILITY].ofs,
 			hdr.lumps[LUMP_VISIBILITY].len);
-	q2bsp_leafs(f.data + hdr.lumps[LUMP_LEAFS].ofs,
+	q2bsp_leafs(f.f_ptr + hdr.lumps[LUMP_LEAFS].ofs,
 			hdr.lumps[LUMP_LEAFS].len);
-	q2bsp_nodes(f.data + hdr.lumps[LUMP_NODES].ofs,
+	q2bsp_nodes(f.f_ptr + hdr.lumps[LUMP_NODES].ofs,
 			hdr.lumps[LUMP_NODES].len);
-	q2bsp_submodels(f.data + hdr.lumps[LUMP_MODELS].ofs,
+	q2bsp_submodels(f.f_ptr + hdr.lumps[LUMP_MODELS].ofs,
 			hdr.lumps[LUMP_MODELS].len);
 
 	con_printf("bsp: %s loaded OK\n", name);
 	return 0;
 
 err_close:
-	gfile_close(&f);
+	game_close(&f);
 err:
 	return -1;
 }

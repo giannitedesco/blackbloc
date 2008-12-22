@@ -64,19 +64,19 @@ void *md2_load(const char *name)
 	}
 
 	/* Open the model file */
-	if ( gfile_open(&m->f, name) ) {
+	if ( !game_open(&m->f, name) ) {
 		con_printf("md2: %s: no such file\n", name);
 		goto err;
 	}
 
-	if ( sizeof(hdr) > m->f.len ) {
+	if ( sizeof(hdr) > m->f.f_len ) {
 		con_printf("md2: %s: too small for header\n", name);
 		goto err_close;
 	}
 
 	/* byteswap the header (its all ints) */
-	memcpy(&hdr, m->f.data, sizeof(hdr));
-	tmp=(uint32_t *)&hdr;
+	memcpy(&hdr, m->f.f_ptr, sizeof(hdr));
+	tmp = (uint32_t *)&hdr;
 	for(i=0; i<sizeof(hdr)/4; i++) {
 		*tmp=le_32(*tmp);
 		tmp++;
@@ -115,15 +115,15 @@ void *md2_load(const char *name)
 	m->num_xyz = hdr.num_xyz;
 	m->num_glcmds = hdr.num_glcmds;
 	m->num_skins = hdr.num_skins;
-	m->skins = m->f.data + hdr.ofs_skins;
+	m->skins = m->f.f_ptr + hdr.ofs_skins;
 
-	if ( hdr.ofs_skins + (hdr.num_skins * MAX_SKINNAME) > m->f.len ) {
+	if ( hdr.ofs_skins + (hdr.num_skins * MAX_SKINNAME) > m->f.f_len ) {
 		con_printf("md2: %s: too small for skins\n", name);
 		goto err_close;
 	}
 
 	alias_len = hdr.num_frames * (sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz);
-	if ( hdr.ofs_frames + alias_len > m->f.len ) {
+	if ( hdr.ofs_frames + alias_len > m->f.f_len ) {
 		con_printf("md2: %s: too small for frames\n", name);
 		goto err_close;
 	}
@@ -135,7 +135,7 @@ void *md2_load(const char *name)
 	}
 
 	/* These values all need byteswapping */
-	f= m->f.data + hdr.ofs_frames;
+	f= m->f.f_ptr + hdr.ofs_frames;
 	for(i=0; i<hdr.num_frames; i++) {
 		m->frame[i].scale[0] = le_float(f->scale[1]);
 		m->frame[i].scale[1] = le_float(f->scale[2]);
@@ -149,7 +149,7 @@ void *md2_load(const char *name)
 	}
 
 	/* Load the glcmds */
-	if ( hdr.ofs_glcmds + hdr.num_glcmds*sizeof(*m->glcmds) > m->f.len ) {
+	if ( hdr.ofs_glcmds + hdr.num_glcmds*sizeof(*m->glcmds) > m->f.f_len ) {
 		con_printf("md2: %s: too small for glcmds\n", name);
 		goto err_free_frames;
 	}
@@ -159,7 +159,7 @@ void *md2_load(const char *name)
 		goto err_free_frames;
 	}
 
-	tmp=m->f.data + hdr.ofs_glcmds;
+	tmp=m->f.f_ptr + hdr.ofs_glcmds;
 	for(i=0; i<hdr.num_glcmds; i++) {
 		m->glcmds[i]=le_32(tmp[i]);
 	}
@@ -180,7 +180,7 @@ err_free_glcmds:
 err_free_frames:
 	free(m->frame);
 err_close:
-	gfile_close(&m->f);
+	game_close(&m->f);
 err:
 	free(m);
 	return NULL;

@@ -10,7 +10,6 @@
 #include <sdl_keyb.h>
 #include <hud.h>
 #include <gfile.h>
-#include <q2pak.h>
 #include <md2.h>
 #include <md5model.h>
 #include <client.h>
@@ -22,14 +21,25 @@ struct playerstate me={
 };
 
 static struct cl_ent ent;
+static gfs_t gfs;
+
+int game_open(struct gfile *f, const char *name)
+{
+	return gfile_open(gfs, f, name);
+}
+
+void game_close(struct gfile *f)
+{
+	gfile_close(gfs, f);
+}
 
 int cl_init(void)
 {
-	client_frame = 0;
+	gfs = gfs_open("data/game.gfs");
+	if ( gfs == NULL )
+		return 0;
 
-	/* Load quake2 pak files */
-	q2pak_add("data/pak0.pak");
-	q2pak_add("data/pak1.pak");
+	client_frame = 0;
 
 	/* Bind keys */
 	cl_cmd_bind("backquote", "console");
@@ -42,7 +52,7 @@ int cl_init(void)
 	cl_cmd_bind("c", "+crouch");
 
 	//if ( !gl_init(1680, 1050, 24, 1) )
-	if ( !gl_init(1600, 1200, 24, 1) )
+	if ( !gl_init(1024, 768, 24, 0) )
 		return 0;
 
 	if ( !hud_init() )
@@ -59,15 +69,15 @@ int cl_init(void)
 
 	q2bsp_load("maps/q2dm1.bsp");
 
-	md5_load("d3/demo/models/md5/monsters/zombies/labcoatzombie.md5mesh",
-		"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
+	//md5_load("d3/demo/models/md5/monsters/zombies/labcoatzombie.md5mesh",
+	//	"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
 	return 1;
 }
 
 void cl_render(void)
 {
 	q2bsp_render();
-	md5_render();
+	//md5_render();
 	cl_model_render(&ent);
 }
 

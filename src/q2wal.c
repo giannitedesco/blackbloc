@@ -22,7 +22,7 @@ static int got_palette;
 /* Load from symbolic name rather than filename */
 int q2wal_load_by_name(char *name)
 {
-	size_t nlen=strlen(name)+14;
+	size_t nlen = strlen(name) + 14;
 	char buf[nlen];
 
 	/* Check if it already loaded */
@@ -38,7 +38,7 @@ struct image *q2wal_find(char *n)
 {
 	struct image *ret;
 
-	for(ret=wals; ret; ret=ret->next) {
+	for(ret = wals; ret; ret = ret->next) {
 		if ( !strcmp(n, ret->name) )
 			return ret;
 	}
@@ -50,7 +50,7 @@ struct image *q2wal_find(char *n)
 struct image *q2wal_get(char *n)
 {
 	struct image *ret;
-	int again=0;
+	int again = 0;
 
 try_again:
 	if ( (ret=q2wal_find(n)) ) {
@@ -72,42 +72,43 @@ try_again:
  * full RGB texture, gah */
 static int q2wal_upload(struct image *wal)
 {
-	int width=wal->s_width;
-	int height=wal->s_height;
+	int width = wal->s_width;
+	int height = wal->s_height;
 	unsigned char *trans;
-	unsigned char *data=wal->s_pixels;
+	unsigned char *data = wal->s_pixels;
 	int s, i, p;
 
-	if ( !(wal->mipmap[0].pixels=malloc(width*height*3)) )
+	wal->mipmap[0].pixels = malloc(width * height * 3);
+	if ( wal->mipmap[0].pixels == NULL )
 		return -1;
 
-	trans=wal->mipmap[0].pixels;
+	trans = wal->mipmap[0].pixels;
 
-	s=width * height;
+	s = width * height;
 
-	for(i=0; i<s; i++) {
-		p=data[i];
+	for(i = 0; i < s; i++) {
+		p = data[i];
 
-		if (p == 255) {
-			if (i > width && data[i-width] != 255)
-				p = data[i-width];
-			else if (i < s-width && data[i+width] != 255)
-				p = data[i+width];
-			else if (i > 0 && data[i-1] != 255)
-				p = data[i-1];
-			else if (i < s-1 && data[i+1] != 255)
-				p = data[i+1];
+		if ( p == 0xff ) {
+			if (i > width && data[i - width] != 0xff)
+				p = data[i - width];
+			else if (i < s-width && data[i + width] != 0xff)
+				p = data[i + width];
+			else if (i > 0 && data[i - 1] != 0xff)
+				p = data[i - 1];
+			else if (i < s - 1 && data[i + 1] != 0xff)
+				p = data[i + 1];
 			else
 				p = 0;
 		}
 
-		*trans++ = palette[3*p+0];
-		*trans++ = palette[3*p+1];
-		*trans++ = palette[3*p+2];
+		*trans++ = palette[3 * p + 0];
+		*trans++ = palette[3 * p + 1];
+		*trans++ = palette[3 * p + 2];
 	}
 
-	wal->mipmap[0].width=wal->s_width;
-	wal->mipmap[0].height=wal->s_height;
+	wal->mipmap[0].width = wal->s_width;
+	wal->mipmap[0].height = wal->s_height;
 
 	img_upload_rgb(wal);
 
@@ -118,66 +119,66 @@ static int q2wal_upload(struct image *wal)
 int q2wal_load(char *name)
 {
 	struct miptex *t;
-	struct image *i;
+	struct image *wal;
 	size_t ofs;
 
 	/* Try load the palette if we don't have it */
 	if ( !got_palette ) {
-		if ( pcx_load_colormap("pics/colormap.pcx", palette)<0 ) {
+		if ( pcx_load_colormap("pics/colormap.pcx", palette) < 0 ) {
 			con_printf("q2wal: error loading palette\n");
 			return -1;
 		}
 
-		got_palette=1;
+		got_palette = 1;
 	}
 
-	if ( !(i=calloc(1, sizeof(*i))) )
+	wal = calloc(1, sizeof(*wal));
+	if ( wal == NULL )
 		return -1;
 
-	if ( gfile_open(&i->f, name)<0 ) {
-		free(i);
-		return -1;
-	}
+	if ( !game_open(&wal->f, name) )
+		goto err_free;
 
-	if ( i->f.len<sizeof(*t) ) {
+	if ( wal->f.f_len < sizeof(*t) ) {
 		con_printf("%s: short wal\n", name);
 		goto err;
 	}
 
-	t=(struct miptex *)i->f.data;
+	t = (struct miptex *)wal->f.f_ptr;
 
 	/* Fill in the details from the header */
-	i->name=t->name;
-	ofs=le_32(t->offsets[0]);
-	i->s_width=le_32(t->width);
-	i->s_height=le_32(t->height);
-	i->s_pixels=i->f.data+ofs;
-	i->mipmap[0].pixels=NULL;
-	i->upload=q2wal_upload;
-	i->unload=img_free_unload;
+	wal->name = t->name;
+	ofs = le_32(t->offsets[0]);
+	wal->s_width = le_32(t->width);
+	wal->s_height = le_32(t->height);
+	wal->s_pixels = wal->f.f_ptr + ofs;
+	wal->mipmap[0].pixels = NULL;
+	wal->upload = q2wal_upload;
+	wal->unload = img_free_unload;
 
 	/* Sanity checks on pixel data */
-	if ( i->s_width==0 || i->s_height==0 ) {
+	if ( wal->s_width == 0 || wal->s_height == 0 ) {
 		con_printf("%s: corrupt wal\n", name);
 		goto err;
 	}
 
-	if ( ofs+(i->s_width*i->s_height) > i->f.len ) {
+	if ( ofs + (wal->s_width * wal->s_height) > wal->f.f_len ) {
 		con_printf("%s: truncated wal\n", name);
 		goto err;
 	}
 
-	i->next=wals;
-	wals=i;
+	wal->next = wals;
+	wals = wal;
 
 #if 0
-	con_printf("q2wal: %s (%s) (%ix%i)\n",
-		name, i->name, i->s_width, i->s_height);
+	con_printf("q2wal: %s (%s) (%dx%d)\n",
+		name, wal->name, wal->s_width, wal->s_height);
 #endif
 
 	return 0;
 err:
-	gfile_close(&i->f);
-	free(i);
+	game_close(&wal->f);
+err_free:
+	free(wal);
 	return -1;
 }

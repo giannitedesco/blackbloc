@@ -19,31 +19,34 @@
 #include <img_png.h>
 
 static struct image *pngs;
+struct png_io_ffs {
+	struct gfile *file;
+	size_t fptr;
+};
 
 /* Replacement read function for libpng */
 static void png_read_data_fn(png_structp png, png_bytep data, png_size_t len)
 {
-	struct gfile *f = png_get_io_ptr(png);
+	struct png_io_ffs *ffs = png_get_io_ptr(png);
 
-	if ( f->ofs >= f->len )
+	if ( ffs->fptr > ffs->file->f_len )
 		return;
-
-	if ( f->ofs + len >= f->len )
-		len = f->len - f->ofs;
-
-	memcpy(data, f->data + f->ofs, len);
-	f->ofs += len;
+	if ( ffs->fptr + len > ffs->file->f_len )
+		len = ffs->file->f_len - ffs->fptr;
+	memcpy(data, ffs->file->f_ptr + ffs->fptr, len);
+	ffs->fptr += len;
 }
 
 static int png_load(char *name)
 {
 	struct image *i;
 	png_structp png;
-	png_infop info=NULL;
+	png_infop info = NULL;
 	int bits, color, inter;
 	png_uint_32 w, h;
 	uint8_t *buf;
 	unsigned int x, rb;
+	struct png_io_ffs ffs;
 
 	if ( !(png=png_create_read_struct(PNG_LIBPNG_VER_STRING,
 						NULL, NULL, NULL)) ) {
@@ -56,15 +59,17 @@ static int png_load(char *name)
 	if ( !(i=calloc(1, sizeof(*i))) )
 		goto err_png;
 
-	if ( gfile_open(&i->f, name)<0 )
+	if ( !game_open(&i->f, name) )
 		goto err_img;
 
-	if ( i->f.len < 8 || png_sig_cmp(i->f.data, 0, 8) ) {
+	if ( i->f.f_len < 8 || png_sig_cmp(i->f.f_ptr, 0, 8) ) {
 		con_printf("png: %s: bad signature\n", name);
 		goto err_close;
 	}
 
-	png_set_read_fn(png, &i->f, png_read_data_fn);
+	ffs.file = &i->f;
+	ffs.fptr = 0;
+	png_set_read_fn(png, &ffs, png_read_data_fn);
 	png_read_info(png, info);
 
 	/* Get the information we need */
@@ -92,7 +97,7 @@ static int png_load(char *name)
 		png_read_row(png, buf + (x*rb), NULL);
 	}
 
-	i->name = i->f.name;
+	i->name = i->f.f_name;
 	i->mipmap[0].width = i->s_width = w;
 	i->mipmap[0].height = i->s_height = h;
 	i->s_pixels = i->mipmap[0].pixels = buf;
@@ -104,7 +109,7 @@ static int png_load(char *name)
 
 	png_read_end(png, info);
 	png_destroy_read_struct(&png, &info, NULL);
-	gfile_close(&i->f);
+	game_close(&i->f);
 
 	i->next = pngs;
 	pngs = i;
@@ -112,7 +117,7 @@ static int png_load(char *name)
 	return 0;
 
 err_close:
-	gfile_close(&i->f);
+	game_close(&i->f);
 err_img:
 	free(i);
 err_png:

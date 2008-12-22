@@ -1,118 +1,199 @@
 /*
 * This file is part of blackbloc
-* Copyright (c) 2003 Gianni Tedesco
+* Copyright (c) 2008 Gianni Tedesco
 * Released under the terms of the GNU GPL version 2
-*
-* Game file API, hides different game archive formats.
-* Only QuakeII PAK files are supported currently.
 */
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <fcntl.h>
-
 #include <blackbloc.h>
 #include <gfile.h>
-#include <q2pak.h>
+#include <gfile-internal.h>
 
-static const char *game_root = "/home/scara/Development/blackbloc/data";
-static void direct_close(struct gfile *f);
-static int direct_open(struct gfile *f, const char *fn);
-static struct gfile_ops direct_ops={
-	.close = direct_close,
-	.open = direct_open,
-	.type_name = "direct",
-	.type_desc= "Direct Filesystem Access",
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define GFS_MAX_LEN (0xffffffff)
+#define GFS_MIN_LEN (sizeof(struct gfile_hdr) + \
+			2 * sizeof(struct gfile_blk) + \
+			sizeof(struct gfile_nidx))
+
+/* Note that the file layout is such that we only need
+ * these 4 fields to do correct + optimnal file lookup
+ */
+struct _gfs {
+	const uint8_t *fs_map;
+	const uint8_t *fs_end;
+	uint32_t fs_num_names;
+	const struct gfile_name *fs_name;
 };
 
-static void direct_close(struct gfile *f)
+static const struct gfile_nidx *gfile_nidx(struct _gfs *fs,
+					const struct gfile_blk *b)
 {
-	free(f->priv);
-	munmap(f->data, f->len);
+	const struct gfile_nidx *n;
+	const uint8_t *ptr;
+	size_t ofs;
+
+	ofs = be_32(b->b_ofs);
+
+	if ( fs->fs_map + ofs + sizeof(*n) > fs->fs_end )
+		return NULL;
+
+	ptr = (fs->fs_map + ofs);
+	n = (struct gfile_nidx *)ptr;
+
+	n += sizeof(struct gfile_name) * be_32(n->i_num_names);
+	n += be_32(n->i_strtab_sz);
+	if ( (uint8_t *)n > fs->fs_end )
+		return NULL;
+
+	n = (const struct gfile_nidx *)ptr;
+	return n;
 }
 
-static int direct_open(struct gfile *f, const char *fn)
+static struct gfile_blk *gfile_blk(struct _gfs *fs,
+					unsigned int type,
+					unsigned int id)
 {
-	size_t grlen = strlen(game_root);
-	size_t len = grlen + strlen(fn) + 2;
+	unsigned int i;
+	struct gfile_hdr *h;
+	struct gfile_blk *b;
+	unsigned int num_blk;
+
+	h = (struct gfile_hdr *)fs->fs_map;
+	num_blk = be_32(h->h_num_blk);
+
+	b = h->h_blk + num_blk;
+	if ( (uint8_t *)b > fs->fs_end )
+		return NULL;
+
+	/* linear scan for now */
+	for(b = h->h_blk, i = 0; i < num_blk; i++,b++) {
+		if ( be_16(b->b_type) != type )
+			continue;
+		if ( be_16(b->b_id) != id )
+			continue;
+		return b;
+	}
+
+	return NULL;
+}
+
+gfs_t gfs_open(const char *fn)
+{
+	struct gfile_hdr *h;
+	struct gfile_blk *b;
+	struct gfile_nidx *n;
+	struct _gfs *fs;
 	struct stat st;
-	char *map;
-	char *buf;
+	size_t fs_len;
 	int fd;
 
-	/* TODO: Detect and strip .. path components */
-	buf = malloc(len);
-	if ( buf == NULL ) {
-		con_printf("%s: malloc(): %s\n", fn, get_err());
-		goto err;
-	}
+	fs = calloc(1, sizeof(*fs));
+	if (fs == NULL)
+		goto out;
 
-	snprintf(buf, len, "%s/%s", game_root, fn);
-
-	fd = open(buf, O_RDONLY);
-	if ( fd < 0 ) {
-		if ( errno != ENOENT )
-			con_printf("%s: open(): %s\n", buf, get_err());
+	fd = open(fn, O_RDONLY);
+	if ( fd < 0 )
 		goto err_free;
-	}
 
-	if ( fstat(fd, &st) ) {
-		con_printf("%s: fstat(): %s\n", buf, get_err());
+	if ( fstat(fd, &st) )
 		goto err_close;
-	}
 
-	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if ( map == MAP_FAILED ) {
-		con_printf("%s: mmap(): %s\n", buf, get_err());
+#if _FILE_OFFSET_BITS > 32
+	if ( st.st_size > GFS_MAX_LEN )
 		goto err_close;
-	}
+#endif
+	if ( (size_t)st.st_size < GFS_MIN_LEN )
+		goto err_close;
+
+	fs_len = st.st_size;
+	fs->fs_map = mmap(NULL, fs_len, PROT_READ, MAP_SHARED, fd, 0);
+	if ( fs->fs_map == MAP_FAILED )
+		goto err_close;
+
+	fs->fs_end  = fs->fs_map + fs_len;
+	h = (struct gfile_hdr *)fs->fs_map;
+	if ( be_32(h->h_magic) != GFILE_MAGIC )
+		goto err_unmap;
+	
+	/* The DB is basically "live" now as far as accessor methods
+	 * are concerned...
+	 */
+
+	b = gfile_blk(fs, GFILE_TYPE_NIDX, GFILE_NIDX_FILENAMES);
+	if ( b == NULL )
+		goto err_unmap;
+
+	n = gfile_nidx(fs, b);
+	if ( n == NULL )
+		goto err_unmap;
+	
+	fs->fs_num_names = be_32(n->i_num_names);
+	fs->fs_name = n->i_name;
+
+	con_printf("%s: %s: %u files\n",
+			_func, fn, fs->fs_num_names);
 
 	close(fd);
-
-	f->data = map;
-	f->len = st.st_size;
-	f->name = buf + grlen + 1;
-	f->ops = &direct_ops;
-	f->priv = buf;
-
-	return 0;
+	return fs;
+err_unmap:
+	munmap((void *)fs->fs_map, fs_len);
 err_close:
 	close(fd);
 err_free:
-	free(buf);
-err:
-	return -1;
+	free(fs);
+out:
+	con_printf("%s: %s: %s\n", _func, fn, load_err("File corrupted"));
+	return NULL;
 }
 
-/* Open a game file */
-int gfile_open(struct gfile *f, const char *name)
+void gfs_close(gfs_t fs)
 {
-	/* Strip leading slashes */
-	while ( *name == '/' )
-		name++;
+	munmap((void *)fs->fs_map, fs->fs_end - fs->fs_map);
+	free(fs);
+}
 
-	if ( *name == '\0' )
-		return -1;
+int gfile_open(gfs_t fs, struct gfile *f, const char *name)
+{
+	const struct gfile_name *ptr;
+	unsigned int n;
 
-	if ( !direct_open(f, name) )
-		goto success;
+	assert(fs != NULL);
+	assert(f != NULL);
 
-	if ( !q2pak_open(f, name) )
-		goto success;
+	n = fs->fs_num_names;
+	ptr = fs->fs_name;
 
-	return -1;
-success:
-	f->ofs = 0;
+	for(;;) {
+		unsigned int i;
+		int ret;
+
+		i = n / 2;
+		ret = strcmp(name,
+				(char *)fs->fs_map + be_32(ptr[i].n_name));
+		if ( ret < 0 ) {
+			n = i;
+		}else if ( ret > 0 ) {
+			ptr = ptr + (i + 1);
+			n = n - (i + 1);
+		}else{
+			f->f_ptr = fs->fs_map + be_32(ptr[i].n_ofs);
+			f->f_len = be_32(ptr[i].n_len);
+			f->f_name = (char *)fs->fs_map + be_32(ptr[i].n_name);
+			assert((uint8_t *)f->f_ptr + f->f_len < fs->fs_end);
+			return 1;
+		}
+		if ( n == 0 )
+			break;
+	}
+
 	return 0;
 }
 
-/* Close a game file */
-void gfile_close(struct gfile *f)
+void gfile_close(gfs_t fs, struct gfile *f)
 {
-	if ( !f->ops->close )
-		return;
-
-	f->ops->close(f);
+	assert(fs != NULL);
+	assert(f != NULL);
+	/* HEH, that was easy */
 }

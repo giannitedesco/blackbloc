@@ -9,7 +9,79 @@
 #include <gfile.h>
 #include <teximage.h>
 
-void img_resample_rgba(uint8_t *, int, int, uint8_t *, int, int);
+/* XXX: tidy up, try hyper filtering */
+static void img_resample_rgba(uint8_t *p_in, int inwidth, int inheight,
+			uint8_t *p_out, int outwidth, int outheight)
+{
+	int i, j;
+	unsigned *inrow, *inrow2;
+	unsigned frac, fracstep;
+	unsigned p1[1024], p2[1024];
+	uint8_t *pix1, *pix2, *pix3, *pix4;
+	unsigned *in = (unsigned *)p_in;
+	unsigned *out = (unsigned *)p_out;
+
+	fracstep = inwidth * 0x10000 / outwidth;
+
+	frac = fracstep >> 2;
+	for (i=0 ; i < outwidth ; i++)
+	{
+		p1[i] = 4*(frac>>16);
+		frac += fracstep;
+	}
+	frac = 3 * (fracstep >> 2);
+	for (i=0 ; i < outwidth ; i++)
+	{
+		p2[i] = 4 * (frac >> 16);
+		frac += fracstep;
+	}
+
+	for (i=0 ; i<outheight ; i++, out += outwidth)
+	{
+		inrow = in + inwidth *
+			(int)((i + 0.25) * inheight / outheight);
+		inrow2 = in + inwidth *
+			(int)((i + 0.75) * inheight / outheight);
+		frac = fracstep >> 1;
+		for (j=0 ; j<outwidth ; j++)
+		{
+			pix1 = (uint8_t *)inrow + p1[j];
+			pix2 = (uint8_t *)inrow + p2[j];
+			pix3 = (uint8_t *)inrow2 + p1[j];
+			pix4 = (uint8_t *)inrow2 + p2[j];
+			((uint8_t *)(out+j))[0] = (pix1[0] + pix2[0] + pix3[0] + pix4[0])>>2;
+			((uint8_t *)(out+j))[1] = (pix1[1] + pix2[1] + pix3[1] + pix4[1])>>2;
+			((uint8_t *)(out+j))[2] = (pix1[2] + pix2[2] + pix3[2] + pix4[2])>>2;
+			((uint8_t *)(out+j))[3] = (pix1[3] + pix2[3] + pix3[3] + pix4[3])>>2;
+		}
+	}
+	con_printf("resampled: %ux%u RGB -> %ux%u RGBA\n",
+			inwidth, inheight, outwidth, outheight);
+}
+
+void img_get(struct image *i)
+{
+	if ( i->ref == 0 ) {
+		glGenTextures(1, &i->texnum);
+		if ( !i->upload(i) ) {
+			/* TODO: Use default texture */
+		}
+	}
+
+	i->ref++;
+}
+
+void img_put(struct image *i)
+{
+	i->ref--;
+	if ( i->ref == 0 )
+		glDeleteTextures(1, &i->texnum);
+}
+
+void img_bind(struct image *i)
+{
+	glBindTexture(GL_TEXTURE_2D, i->texnum);
+}
 
 /* Just free it */
 void img_free_unload(struct image *img)
@@ -89,54 +161,4 @@ int img_upload_rgba(struct image *i)
 int img_upload_rgb(struct image *i)
 {
 	return img_upload_generic(i, GL_RGB);
-}
-
-/* XXX: tidy up, try hyper filtering */
-void img_resample_rgba(uint8_t *p_in, int inwidth, int inheight,
-			uint8_t *p_out, int outwidth, int outheight)
-{
-	int i, j;
-	unsigned *inrow, *inrow2;
-	unsigned frac, fracstep;
-	unsigned p1[1024], p2[1024];
-	uint8_t *pix1, *pix2, *pix3, *pix4;
-	unsigned *in = (unsigned *)p_in;
-	unsigned *out = (unsigned *)p_out;
-
-	fracstep = inwidth * 0x10000 / outwidth;
-
-	frac = fracstep >> 2;
-	for (i=0 ; i < outwidth ; i++)
-	{
-		p1[i] = 4*(frac>>16);
-		frac += fracstep;
-	}
-	frac = 3 * (fracstep >> 2);
-	for (i=0 ; i < outwidth ; i++)
-	{
-		p2[i] = 4 * (frac >> 16);
-		frac += fracstep;
-	}
-
-	for (i=0 ; i<outheight ; i++, out += outwidth)
-	{
-		inrow = in + inwidth *
-			(int)((i + 0.25) * inheight / outheight);
-		inrow2 = in + inwidth *
-			(int)((i + 0.75) * inheight / outheight);
-		frac = fracstep >> 1;
-		for (j=0 ; j<outwidth ; j++)
-		{
-			pix1 = (uint8_t *)inrow + p1[j];
-			pix2 = (uint8_t *)inrow + p2[j];
-			pix3 = (uint8_t *)inrow2 + p1[j];
-			pix4 = (uint8_t *)inrow2 + p2[j];
-			((uint8_t *)(out+j))[0] = (pix1[0] + pix2[0] + pix3[0] + pix4[0])>>2;
-			((uint8_t *)(out+j))[1] = (pix1[1] + pix2[1] + pix3[1] + pix4[1])>>2;
-			((uint8_t *)(out+j))[2] = (pix1[2] + pix2[2] + pix3[2] + pix4[2])>>2;
-			((uint8_t *)(out+j))[3] = (pix1[3] + pix2[3] + pix3[3] + pix4[3])>>2;
-		}
-	}
-	con_printf("resampled: %ux%u RGB -> %ux%u RGBA\n",
-			inwidth, inheight, outwidth, outheight);
 }
