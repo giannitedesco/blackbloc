@@ -1,7 +1,6 @@
 Infrastructure
 --------------
  o gfile re-write
-   - fix compile warnigns
    - new index types etc...
  o Remove "return -1" error codes from everywhere
  o Headers need re-working

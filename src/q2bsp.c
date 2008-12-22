@@ -255,20 +255,20 @@ static int q2bsp_submodels(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny model lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad model count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: model oom\n");
-		return -1;
+		return 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 static void node_set_parent(struct bsp_mnode *n, struct bsp_mnode *p)
@@ -291,17 +291,17 @@ static int q2bsp_nodes(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny node lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad node count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: node oom\n");
-		return -1;
+		return 0;
 	}
 
 	mnode=out;
@@ -334,7 +334,7 @@ static int q2bsp_nodes(const void *data, uint32_t len)
 
 	node_set_parent(mnode, NULL);
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_leafs(const void *data, uint32_t len)
@@ -348,17 +348,17 @@ static int q2bsp_leafs(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny leaf lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad leaf count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: leaf oom\n");
-		return -1;
+		return 0;
 	}
 
 	mleaf = out;
@@ -383,7 +383,7 @@ static int q2bsp_leafs(const void *data, uint32_t len)
 		out->visframe = 0;
 	}
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_visibility(const void *data, uint32_t len)
@@ -397,12 +397,12 @@ static int q2bsp_visibility(const void *data, uint32_t len)
 
 	if ( !(out=malloc(num * sizeof(*out))) ) {
 		con_printf("q2bsp: vis oom\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(vis=malloc(num>>3)) ) {
 		con_printf("q2bsp: vis oom 2\n");
-		return -1;
+		return 0;
 	}
 
 	out->numclusters = num;
@@ -414,7 +414,7 @@ static int q2bsp_visibility(const void *data, uint32_t len)
 
 	visofs = out;
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_marksurfaces(const void *data, uint32_t len)
@@ -428,17 +428,17 @@ static int q2bsp_marksurfaces(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny leaf face lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad leaf face count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: leaf face oom\n");
-		return -1;
+		return 0;
 	}
 
 	marksurface = out;
@@ -448,12 +448,12 @@ static int q2bsp_marksurfaces(const void *data, uint32_t len)
 		j = (short)le_16(in[i]);
 		if ( j<0 || j>= numsurfaces ) {
 			con_printf("q2bsp: bad leaf face surface number\n");
-			return -1;
+			return 0;
 		}
 		out[i] = msurface + j;
 	}
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_faces(const void *data, uint32_t len)
@@ -469,17 +469,17 @@ static int q2bsp_faces(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny face lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad face count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: face oom\n");
-		return -1;
+		return 0;
 	}
 
 	msurface = out;
@@ -528,7 +528,7 @@ static int q2bsp_faces(const void *data, uint32_t len)
 	}
 
 	lm_upload_block();
-	return 0;
+	return 1;
 }
 
 static int q2bsp_planes(const void *data, uint32_t len)
@@ -543,17 +543,17 @@ static int q2bsp_planes(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny plane lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad plane count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: plane oom\n");
-		return -1;
+		return 0;
 	}
 
 	mplane = out;
@@ -584,13 +584,13 @@ static int q2bsp_planes(const void *data, uint32_t len)
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_lighting(const void *data, uint32_t len)
 {
 	lightdata = data;
-	return 0;
+	return 1;
 }
 
 static int q2bsp_surfedges(const void *data, uint32_t len)
@@ -603,17 +603,17 @@ static int q2bsp_surfedges(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny surfedge lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad surfedge count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: surfedge oom\n");
-		return -1;
+		return 0;
 	}
 
 	msurfedge=out;
@@ -622,7 +622,7 @@ static int q2bsp_surfedges(const void *data, uint32_t len)
 	for(i=0; i<count; i++, out++, in++)
 		*out = le_32(*in);
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_edges(const void *data, uint32_t len)
@@ -636,17 +636,17 @@ static int q2bsp_edges(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny edge lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad edge count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: edge oom\n");
-		return -1;
+		return 0;
 	}
 
 	medge = out;
@@ -657,7 +657,7 @@ static int q2bsp_edges(const void *data, uint32_t len)
 		out->v[1] = (short)le_16(in->v[1]);
 	}
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_vertexes(const void *data, int len)
@@ -671,18 +671,18 @@ static int q2bsp_vertexes(const void *data, int len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny vertex lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad vertex count\n");
-		return -1;
+		return 0;
 	}
 
 	out = malloc(count * sizeof(*out));
 	if ( out == NULL ) {
 		con_printf("q2bsp: vertex oom\n");
-		return -1;
+		return 0;
 	}
 
 	mvert = out;
@@ -693,7 +693,7 @@ static int q2bsp_vertexes(const void *data, int len)
 		out->point[2] = le_float(in->point[0]);
 	}
 
-	return 0;
+	return 1;
 }
 
 static int q2bsp_texinfo(const void *data, uint32_t len)
@@ -707,17 +707,17 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 
 	if ( len % sizeof(*in) ) {
 		con_printf("q2bsp: funny texinfo lump size\n");
-		return -1;
+		return 0;
 	}
 
 	if ( count <= 0 ) {
 		con_printf("q2bsp: bad texinfo count\n");
-		return -1;
+		return 0;
 	}
 
 	if ( !(out=malloc(count * sizeof(*out))) ) {
 		con_printf("q2bsp: texinfo oom\n");
-		return -1;
+		return 0;
 	}
 
 	mtex = out;
@@ -743,7 +743,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 		if ( !out->image ) {
 			con_printf("q2bsp: texture %s not found\n",
 				in->texture);
-			return -1;
+			return 0;
 		}
 	}
 
@@ -755,7 +755,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 			out->numframes++;
 	}
 
-	return 0;
+	return 1;
 }
 
 int q2bsp_load(char *name)
@@ -825,12 +825,12 @@ int q2bsp_load(char *name)
 			hdr.lumps[LUMP_MODELS].len);
 
 	con_printf("bsp: %s loaded OK\n", name);
-	return 0;
+	return 1;
 
 err_close:
 	game_close(&f);
 err:
-	return -1;
+	return 0;
 }
 
 static void q2bsp_surfrender(struct bsp_msurface *s)
