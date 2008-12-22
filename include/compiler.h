@@ -31,6 +31,7 @@
 #define _nonull(x...) __attribute__((nonnull (x)))
 #define _constfn __attribute__((const))
 #define _malloc_nocheck __attribute__((malloc))
+#define _func __FUNCTION__
 #endif
 
 #if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
@@ -55,6 +56,10 @@
 
 #ifndef _packed
 #define _packed
+#endif
+
+#ifndef _func
+#define _func "<unknown_func>"
 #endif
 
 #ifndef _noreturn
