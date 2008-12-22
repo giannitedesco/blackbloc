@@ -407,9 +407,6 @@ static int scan_manifest(FILE *f)
 
 int main(int argc, char **argv)
 { 
-	(void)argv;
-	(void)argc; /* fuck off -WExtra */
-
 	mpool_init(&fmem, sizeof(struct manifest), 0);
 	gang_init(&nmem, 0);
 

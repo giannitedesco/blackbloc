@@ -81,9 +81,9 @@ static struct gfile_blk *gfile_blk(struct _gfs *fs,
 
 gfs_t gfs_open(const char *fn)
 {
-	struct gfile_hdr *h;
-	struct gfile_blk *b;
-	struct gfile_nidx *n;
+	const struct gfile_hdr *h;
+	const struct gfile_blk *b;
+	const struct gfile_nidx *n;
 	struct _gfs *fs;
 	struct stat st;
 	size_t fs_len;
@@ -113,7 +113,7 @@ gfs_t gfs_open(const char *fn)
 		goto err_close;
 
 	fs->fs_end  = fs->fs_map + fs_len;
-	h = (struct gfile_hdr *)fs->fs_map;
+	h = (const struct gfile_hdr *)fs->fs_map;
 	if ( be_32(h->h_magic) != GFILE_MAGIC )
 		goto err_unmap;
 	

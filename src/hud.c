@@ -102,7 +102,7 @@ static inline void hud_char(struct image *i,
 	glEnd();
 }
 
-void crosshair_render()
+static void crosshair_render(void)
 {
 	int sz = 32;
 	float xmin = (vid_x/2) - (sz/2);
@@ -148,9 +148,9 @@ void hud_toggle_console(void)
 	}
 }
 
-void con_render(void)
+static void con_render(void)
 {
-	int x,y;
+	int x, y;
 	char chr;
 
 	if ( !showcon )
@@ -167,10 +167,10 @@ void con_render(void)
 	glVertex2f(0, 0);
 
 	glTexCoord2f(0, 1);
-	glVertex2f(0, (vid_y/4) * 3);
+	glVertex2f(0, (vid_y / 4) * 3);
 
 	glTexCoord2f(1, 1);
-	glVertex2f(vid_x, (vid_y/4) * 3);
+	glVertex2f(vid_x, (vid_y / 4) * 3);
 
 	glTexCoord2f(1, 0.25);
 	glVertex2f(vid_x, 0);
@@ -178,9 +178,10 @@ void con_render(void)
 
 	glColor4f(1,1,1,1);
 
-	for (y=0; y<con_y; y++) {
-		for(x=0; x<con_x; x++) {
-			if ( !(chr=hudmap[y*con_x + x]) )
+	for (y = 0; y < con_y; y++) {
+		for(x = 0; x < con_x; x++) {
+			chr = hudmap[y * con_x + x];
+			if ( chr == 0 )
 				break;
 
 			hud_char(conchars, con_col, CON_CHAR, x, y, chr);
@@ -200,7 +201,7 @@ static void hud_printf(int x, int y, const char *fmt, ...)
 	va_start(va, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, va);
 
-	for(p=buf; *p; p++) {
+	for(p = buf; *p; p++) {
 		switch ( *p ) {
 		case '\n':
 			y++;
@@ -234,7 +235,7 @@ void hud_render(void)
 			if ( hud_col[A] > 1.0 )
 				hud_col[A] = 1.0;
 		}
-		hud_printf(0, hud_y-1, lbuf);
+		hud_printf(0, hud_y - 1, lbuf);
 		hud_col[A] = HUD_ALPHA;
 	}
 

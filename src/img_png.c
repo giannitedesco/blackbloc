@@ -37,7 +37,7 @@ static void png_read_data_fn(png_structp png, png_bytep data, png_size_t len)
 	ffs->fptr += len;
 }
 
-static int png_load(char *name)
+static int png_load(const char *name)
 {
 	struct image *i;
 	png_structp png;
@@ -62,7 +62,7 @@ static int png_load(char *name)
 	if ( !game_open(&i->f, name) )
 		goto err_img;
 
-	if ( i->f.f_len < 8 || png_sig_cmp(i->f.f_ptr, 0, 8) ) {
+	if ( i->f.f_len < 8 || png_sig_cmp((void *)i->f.f_ptr, 0, 8) ) {
 		con_printf("png: %s: bad signature\n", name);
 		goto err_close;
 	}

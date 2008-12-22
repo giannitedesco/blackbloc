@@ -53,12 +53,14 @@ void *md2_load(const char *name)
 {
 	struct md2_mdl hdr;
 	uint32_t *tmp;
+	const uint32_t *tmp2;
 	uint32_t i;
 	size_t alias_len;
-	struct md2_aliasframe *f;
+	const struct md2_aliasframe *f;
 	struct md2 *m;
 
-	if ( !(m=calloc(1, sizeof(*m))) ) {
+	m = calloc(1, sizeof(*m));
+	if ( m == NULL ) {
 		con_printf("md2: %s: malloc(): %s\n", name, get_err());
 		return NULL;
 	}
@@ -77,19 +79,19 @@ void *md2_load(const char *name)
 	/* byteswap the header (its all ints) */
 	memcpy(&hdr, m->f.f_ptr, sizeof(hdr));
 	tmp = (uint32_t *)&hdr;
-	for(i=0; i<sizeof(hdr)/4; i++) {
-		*tmp=le_32(*tmp);
+	for(i = 0; i < sizeof(hdr) / 4; i++) {
+		*tmp = le_32(*tmp);
 		tmp++;
 	}
 
 	/* Sanity check header fields (only check the ones we use) */
-	if ( hdr.ident!=IDALIASHEADER ||
-		hdr.version!=ALIAS_VERSION ) {
+	if ( hdr.ident != IDALIASHEADER ||
+		hdr.version != ALIAS_VERSION ) {
 		con_printf("md2: %s: bad model\n", name);
 		goto err_close;
 	}
 
-	if ( hdr.num_xyz <=0 || hdr.num_xyz > MAX_VERTS ) {
+	if ( hdr.num_xyz <= 0 || hdr.num_xyz > MAX_VERTS ) {
 		con_printf("md2: %s: num_xyz=%i must be between 1 and %i\n",
 			name, hdr.num_xyz, MAX_VERTS);
 		goto err_close;
@@ -122,21 +124,23 @@ void *md2_load(const char *name)
 		goto err_close;
 	}
 
-	alias_len = hdr.num_frames * (sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz);
+	alias_len = hdr.num_frames *
+			(sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz);
 	if ( hdr.ofs_frames + alias_len > m->f.f_len ) {
 		con_printf("md2: %s: too small for frames\n", name);
 		goto err_close;
 	}
 
 	/* Load the frames */
-	if ( !(m->frame=malloc(hdr.num_frames * sizeof(*m->frame))) ) {
+	m->frame = malloc(hdr.num_frames * sizeof(*m->frame));
+	if ( m->frame == NULL ) {
 		con_printf("md2: %s: out of memory for frames\n", name);
 		goto err_close;
 	}
 
 	/* These values all need byteswapping */
-	f= m->f.f_ptr + hdr.ofs_frames;
-	for(i=0; i<hdr.num_frames; i++) {
+	f = m->f.f_ptr + hdr.ofs_frames;
+	for(i = 0; i < hdr.num_frames; i++) {
 		m->frame[i].scale[0] = le_float(f->scale[1]);
 		m->frame[i].scale[1] = le_float(f->scale[2]);
 		m->frame[i].scale[2] = le_float(f->scale[0]);
@@ -144,24 +148,26 @@ void *md2_load(const char *name)
 		m->frame[i].translate[1] = le_float(f->translate[2])+26;
 		m->frame[i].translate[2] = le_float(f->translate[0]);
 		memcpy(m->frame[i].name, f->name, sizeof(m->frame[i].name));
-		m->frame[i].verts=f->verts;
+		m->frame[i].verts = f->verts;
 		f = ((void *)f) + sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz;
 	}
 
 	/* Load the glcmds */
-	if ( hdr.ofs_glcmds + hdr.num_glcmds*sizeof(*m->glcmds) > m->f.f_len ) {
+	if ( hdr.ofs_glcmds + hdr.num_glcmds *
+					sizeof(*m->glcmds) > m->f.f_len ) {
 		con_printf("md2: %s: too small for glcmds\n", name);
 		goto err_free_frames;
 	}
 
-	if ( !(m->glcmds=malloc(m->num_glcmds * sizeof(*m->glcmds))) ) {
+	m->glcmds = malloc(m->num_glcmds * sizeof(*m->glcmds));
+	if ( m->glcmds == NULL ) {
 		con_printf("md2: %s: out of memory for GL commands\n", name);
 		goto err_free_frames;
 	}
 
-	tmp=m->f.f_ptr + hdr.ofs_glcmds;
-	for(i=0; i<hdr.num_glcmds; i++) {
-		m->glcmds[i]=le_32(tmp[i]);
+	tmp2 = m->f.f_ptr + hdr.ofs_glcmds;
+	for(i = 0; i < hdr.num_glcmds; i++) {
+		m->glcmds[i] = le_32(tmp2[i]);
 	}
 
 	if ( m->glcmds[hdr.num_glcmds-1] != 0 ) {

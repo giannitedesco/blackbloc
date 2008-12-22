@@ -3,11 +3,13 @@
 * Copyright (c) 2003 Gianni Tedesco
 * Released under the terms of the GNU GPL version 2
 */
+#include <SDL.h>
 
 #include <blackbloc.h>
 #include <gl_render.h>
 #include <client.h>
 #include <hud.h>
+#include <sdl_keyb.h>
 
 void cl_cmd_run(char *cmd)
 {
@@ -25,10 +27,9 @@ int cl_cmd_bind(const char *k, const char *c)
 {
 	struct cl_cmd *cmd;
 	int i;
-	int f=0;
 
 	i = sdl_keyb_code(k);
-	if ( i<0 ) {
+	if ( i < 0 ) {
 		con_printf("Unkown key: \"%s\"\n", k);
 		return 0;
 	}

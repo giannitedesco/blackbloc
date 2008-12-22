@@ -19,9 +19,9 @@ struct miptex {
 };
 
 /* Internal API */
-int q2wal_load(char *path);
-int q2wal_load_by_name(char *name);
-struct image *q2wal_find(char *n);
-struct image *q2wal_get(char *name);
+int q2wal_load(const char *path);
+int q2wal_load_by_name(const char *name);
+struct image *q2wal_find(const char *n);
+struct image *q2wal_get(const char *name);
 
 #endif /* __Q2WAL_HEADER_INCLUDED__ */

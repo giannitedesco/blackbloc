@@ -16,10 +16,9 @@ struct image *pcxs;
 /* Convert in to a full RGBA texture before uploading */
 static int pcx_upload(struct image *i)
 {
-	unsigned char *out;
-	unsigned char *in=i->s_pixels;
-	unsigned char *pal;
-	unsigned char cur;
+	const uint8_t *pal, *in = i->s_pixels;
+	uint8_t *out;
+	uint8_t cur;
 	int run;
 	uint32_t x,y;
 
@@ -66,7 +65,7 @@ static int pcx_upload(struct image *i)
 	return 1;
 }
 
-static int do_pcx_load(const char *name, unsigned char *map)
+static int do_pcx_load(const char *name, uint8_t *map)
 {
 	struct image *i;
 	struct pcx pcx;
@@ -113,7 +112,7 @@ static int do_pcx_load(const char *name, unsigned char *map)
 
 	/* Palette copy mode */
 	if ( map ) {
-		char *pal = i->f.f_ptr + i->f.f_len - PCX_PAL;
+		const uint8_t *pal = i->f.f_ptr + i->f.f_len - PCX_PAL;
 		memcpy(map, pal, PCX_PAL);
 		game_close(&i->f);
 		free(i);
@@ -158,7 +157,7 @@ try_again:
 	goto try_again;
 }
 
-int pcx_load_colormap(const char *name, unsigned char *map)
+int pcx_load_colormap(const char *name, uint8_t *map)
 {
 	return do_pcx_load(name, map);
 }

@@ -69,7 +69,7 @@
 #define	HEADER_LUMPS		19
 
 struct bsp_lump {
-	int ofs, len;
+	uint32_t ofs, len;
 };
 
 #define IDBSPHEADER	(('P'<<24)+('S'<<16)+('B'<<8)+'I')
@@ -175,8 +175,8 @@ struct bsp_brush {
 #define DVIS_PVS 0
 #define DVIS_PHS 1
 struct bsp_vis {
-	int numclusters;
-	int bitofs[8][2];
+	uint32_t numclusters;
+	uint32_t bitofs[8][2];
 };
 
 /* each area has a list of portals that lead in to other areas

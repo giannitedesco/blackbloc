@@ -136,7 +136,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 	char buff[512];
 	int version;
 	int curr_mesh = 0;
-	int i;
+	unsigned int i;
 
 	fp = fopen(filename, "rb");
 	if (!fp) {
@@ -170,6 +170,8 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					   sizeof(struct md5_mesh_t));
 			}
 		} else if (strncmp(buff, "joints {", 8) == 0) {
+			int i;
+
 			/* Read each joint */
 			for (i = 0; i < mdl->num_joints; ++i) {
 				struct md5_joint_t *joint = &mdl->baseSkel[i];
@@ -318,6 +320,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 /**
  * Free resources allocated for the model.
  */
+#if 0
 static void FreeModel(struct md5_model_t *mdl)
 {
 	int i;
@@ -350,6 +353,7 @@ static void FreeModel(struct md5_model_t *mdl)
 		mdl->meshes = NULL;
 	}
 }
+#endif
 
 /**
  * Prepare a mesh for drawing.  Compute mesh's final vertex positions
@@ -396,13 +400,14 @@ PrepareMesh(const struct md5_mesh_t *mesh, const struct md5_joint_t *skeleton)
 	}
 }
 
-static void AllocVertexArrays()
+static void AllocVertexArrays(void)
 {
 	vertexArray = (vec3_t *) malloc(sizeof(vec3_t) * max_verts);
 	vertexIndices = (GLuint *) malloc(sizeof(GLuint) * max_tris * 3);
 }
 
-static void FreeVertexArrays()
+#if 0
+static void FreeVertexArrays(void)
 {
 	if (vertexArray) {
 		free(vertexArray);
@@ -414,6 +419,7 @@ static void FreeVertexArrays()
 		vertexIndices = NULL;
 	}
 }
+#endif
 
 /**
  * Draw the skeleton as lines and points (for joints).
@@ -475,6 +481,7 @@ void md5_load(const char *filename, const char *animfile)
 		printf("init: no animation loaded.\n");
 }
 
+#if 0
 void cleanup(void)
 {
 	FreeModel(&md5file);
@@ -487,6 +494,7 @@ void cleanup(void)
 
 	FreeVertexArrays();
 }
+#endif
 
 void md5_render(void)
 {

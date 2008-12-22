@@ -7,12 +7,14 @@
 #include <SDL.h>
 
 #include <blackbloc.h>
+#include <client.h>
+#include <gl_render.h>
 #include <sdl_keyb.h>
 #include <hud.h>
 #include <gfile.h>
 #include <md2.h>
+#include <q2bsp.h>
 #include <md5model.h>
-#include <client.h>
 
 frame_t client_frame;
 int cl_alive = 1;

@@ -47,7 +47,7 @@ struct md2_frame{
 	float scale[3];
 	float translate[3];
 	char name[16];
-	struct md2_trivertx *verts;
+	const struct md2_trivertx *verts;
 };
 
 /* glcmd format: A vertex is a floating point s, a floating point t and

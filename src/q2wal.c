@@ -20,7 +20,7 @@ static uint8_t palette[PCX_PAL];
 static int got_palette;
 
 /* Load from symbolic name rather than filename */
-int q2wal_load_by_name(char *name)
+int q2wal_load_by_name(const char *name)
 {
 	size_t nlen = strlen(name) + 14;
 	char buf[nlen];
@@ -34,7 +34,7 @@ int q2wal_load_by_name(char *name)
 	return q2wal_load(buf);
 }
 
-struct image *q2wal_find(char *n)
+struct image *q2wal_find(const char *n)
 {
 	struct image *ret;
 
@@ -47,7 +47,7 @@ struct image *q2wal_find(char *n)
 }
 
 /* Get an image provided its name (eg: "e1u1/floor1_3") */
-struct image *q2wal_get(char *n)
+struct image *q2wal_get(const char *n)
 {
 	struct image *ret;
 	int again = 0;
@@ -75,7 +75,7 @@ static int q2wal_upload(struct image *wal)
 	int width = wal->s_width;
 	int height = wal->s_height;
 	unsigned char *trans;
-	unsigned char *data = wal->s_pixels;
+	const unsigned char *data = wal->s_pixels;
 	int s, i, p;
 
 	wal->mipmap[0].pixels = malloc(width * height * 3);
@@ -116,7 +116,7 @@ static int q2wal_upload(struct image *wal)
 }
 
 /* Load in a WAL */
-int q2wal_load(char *name)
+int q2wal_load(const char *name)
 {
 	struct miptex *t;
 	struct image *wal;

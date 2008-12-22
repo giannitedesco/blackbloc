@@ -6,6 +6,7 @@ Infrastructure
  o Remove "return -1" error codes from everywhere
  o Headers need re-working
    - gfile is not client only
+   - SDL is required for some headers
    - a lot of implementatin details are public, hide them away
    - OS specific inline functions and shit!
  o Image API needs re-thinking

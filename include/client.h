@@ -6,8 +6,6 @@
 #ifndef __CLIENT_HEADER_INCLUDED__
 #define __CLIENT_HEADER_INCLUDED__
 
-#include <gfile.h>
-
 struct playerstate {
 	vector_t origin;
 	vector_t oldorigin;
@@ -37,10 +35,6 @@ extern float lerp;
 int cl_init(void);
 void cl_frame(void);
 void cl_render(void);
-
-/* Filesystem I/O API */
-int game_open(struct gfile *f, const char *name);
-void game_close(struct gfile *f);
 
 /* Command access API */
 struct cl_cmd *cl_cmd_by_name(const char *cmd);

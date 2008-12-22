@@ -32,6 +32,7 @@
 #include <bytesex.h>
 #include <list.h>
 #include <vector.h>
+#include <gfile.h>
 
 /* Animation frame */
 typedef uint16_t aframe_t;
@@ -111,5 +112,9 @@ static inline const char *load_err(const char *msg)
 }
 
 void con_printf(const char *fmt, ...);
+
+/* Filesystem I/O API */
+int game_open(struct gfile *f, const char *name);
+void game_close(struct gfile *f);
 
 #endif /* __BLACKBLOC_HEADER_INCLUDED__ */
