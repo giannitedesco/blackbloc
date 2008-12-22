@@ -44,8 +44,7 @@ static int dump_align(FILE *f, uint32_t *cur)
 		return 1;
 
 	sz = GFILE_ALIGN - (*cur & GFILE_ALIGN_MASK);
-	fwrite(pad, sz, 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(pad, sz, 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -70,8 +69,8 @@ static int dump_file(FILE *f, uint32_t *cur, struct file *file)
 	if ( map == MAP_FAILED)
 		goto err_close;
 
-	fwrite(map, file->f_asz, 1, f);
-	ret = !ferror(f);
+	if ( fwrite(map, file->f_asz, 1, f) == 1 )
+		ret = !ferror(f);
 	*cur += file->f_asz;
 
 	munmap((void *)map, file->f_asz);
@@ -88,8 +87,7 @@ static int dump_header(FILE *f, uint32_t *cur, uint32_t num_blk)
 	struct gfile_hdr h;
 	h.h_magic = be_32(GFILE_MAGIC);
 	h.h_num_blk = be_32(num_blk);
-	fwrite(&h, sizeof(h), 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(&h, sizeof(h), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -106,8 +104,7 @@ static int dump_block(FILE *f, uint32_t *cur, uint16_t type, uint16_t id,
 	b.b_ofs = be_32(ofs);
 	b.b_len = be_32(len);
 	b.b_flags = 0;
-	fwrite(&b, sizeof(b), 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(&b, sizeof(b), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -122,8 +119,7 @@ static int dump_nidx(FILE *f, uint32_t *cur,
 	struct gfile_nidx idx;
 	idx.i_num_names = be_32(num_names);
 	idx.i_strtab_sz = be_32(strtab_sz);
-	fwrite(&idx, sizeof(idx), 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(&idx, sizeof(idx), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -141,8 +137,7 @@ static int dump_name(FILE *f, uint32_t *cur,
 	n.n_name = be_32(name);
 	n.n_nlen = be_16(nlen);
 	n.n_mode = 0;
-	fwrite(&n, sizeof(n), 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(&n, sizeof(n), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -152,8 +147,7 @@ static int dump_name(FILE *f, uint32_t *cur,
 
 static int dump_str(FILE *f, uint32_t *cur, const char *str)
 {
-	fwrite(str, strlen(str) + 1, 1, f);
-	if ( ferror(f) ) {
+	if ( fwrite(str, strlen(str) + 1, 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
 	}
@@ -412,7 +406,8 @@ static int scan_manifest(FILE *f)
 }
 
 int main(int argc, char **argv)
-{
+{ 
+	(void)argv;
 	(void)argc; /* fuck off -WExtra */
 
 	mpool_init(&fmem, sizeof(struct manifest), 0);
