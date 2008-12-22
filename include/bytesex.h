@@ -45,8 +45,8 @@ static inline _constfn float bswapf(float x)
 #define be_float(x) bswapf(x)
 #define le_32(x) (x)
 #define le_16(x) (x)
-#define be_32(x) htonl(x)
-#define be_16(x) htons(x)
+#define be_32(x) bswap32(x)
+#define be_16(x) bswap16(x)
 #else
 #error "What in hells name?!"
 #endif
