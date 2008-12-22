@@ -24,9 +24,13 @@
 #if HAVE_ERRNO_H
 #include <errno.h>
 #endif
+#if HAVE_ASSERT_H
+#include <assert.h>
+#endif
 
 #include <compiler.h>
 #include <bytesex.h>
+#include <list.h>
 #include <vector.h>
 
 /* Animation frame */
@@ -34,15 +38,6 @@ typedef uint16_t aframe_t;
 
 /* Client/Server frame */
 typedef uint32_t frame_t;
-
-/* RGBA 8 bit per channel pixel value */
-typedef uint8_t pixel_t[4];
-#define R 0
-#define G 1
-#define B 2
-#define A 3
-
-#define SVF_ALIVE	0x01
 
 /* Basic immutable attributes ingrained in to the client/server
  * communations protocol, anything specific to client or server

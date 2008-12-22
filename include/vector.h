@@ -46,19 +46,25 @@ typedef float scalar_t;
 
 typedef float vector_t[4] _valign;
 
-/* w is a scale value but is mostly ignored, we use it to make
+/* W is a scale value but is mostly ignored, we use it to make
  * 4x4 matrices homogenous so that all affine transformations
  * are matrix multiplications. It is also here to make hardware
  * vector units work right - they usually have 128bit registers
  * so our structure needs to be at least that size or stores
  * could clobber surrounding data.
  */
-
 #define X 0
 #define Y 1
 #define Z 2
 #define W 3
 
+/* Pixel values */
+#define R 0
+#define G 1
+#define B 2
+#define A 3
+
+/* Angles */
 #define PITCH 0
 #define YAW 1
 #define ROLL 2
@@ -71,8 +77,10 @@ typedef float vector_t[4] _valign;
  * ourselves to static/global variables.
  *
  * gcc version 3.2.3
+ *
+ * should be fixed in gcc 4??
  */
-#if 0
+#if __GNUC__ >= 4
 #include <vector_altivec.h>
 #endif
 #endif

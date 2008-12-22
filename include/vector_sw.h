@@ -24,9 +24,9 @@
 static inline void _vfunc
 v_zero(vector_t v)
 {
-	v[X]=0;
-	v[Y]=0;
-	v[Z]=0;
+	v[X] = 0;
+	v[Y] = 0;
+	v[Z] = 0;
 }
 #endif
 
@@ -38,9 +38,9 @@ v_zero(vector_t v)
 static inline void _vfunc
 v_copy(vector_t d, const vector_t s)
 {
-	d[X]=s[X];
-	d[Y]=s[Y];
-	d[Z]=s[Z];
+	d[X] = s[X];
+	d[Y] = s[Y];
+	d[Z] = s[Z];
 }
 #endif
 
@@ -98,12 +98,12 @@ v_len(const vector_t v)
 static inline void _vfunc
 v_normalize(vector_t v)
 {
-	scalar_t len=v_len(v);
+	scalar_t len = v_len(v);
 
-	if ( len==0.0f )
+	if ( len == 0.0f )
 		return;
 
-	len = 1/len;
+	len = 1 / len;
 	v[X] *= len;
 	v[Y] *= len;
 	v[Z] *= len;
@@ -118,9 +118,9 @@ v_normalize(vector_t v)
 static inline void _vfunc
 v_add(vector_t d, const vector_t v1, const vector_t v2)
 {
-	d[X]=v1[X]+v2[X];
-	d[Y]=v1[Y]+v2[Y];
-	d[Z]=v1[Z]+v2[Z];
+	d[X] = v1[X] + v2[X];
+	d[Y] = v1[Y] + v2[Y];
+	d[Z] = v1[Z] + v2[Z];
 }
 #endif
 
@@ -132,9 +132,9 @@ v_add(vector_t d, const vector_t v1, const vector_t v2)
 static inline void _vfunc
 v_sub(vector_t d, const vector_t v1, const vector_t v2)
 {
-	d[X]=v1[X]-v2[X];
-	d[Y]=v1[Y]-v2[Y];
-	d[Z]=v1[Z]-v2[Z];
+	d[X]= v1[X] - v2[X];
+	d[Y]= v1[Y] - v2[Y];
+	d[Z]= v1[Z] - v2[Z];
 }
 #endif
 
