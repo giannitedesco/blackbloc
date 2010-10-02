@@ -9,22 +9,22 @@
 /* On disk format */
 #define PCX_PAL 768 /* number of palette entries */
 struct pcx {
-	char		manufacturer;
-	char		version;
-	char		encoding;
-	char		bits_per_pixel;
-	unsigned short	xmin,ymin,xmax,ymax;
-	unsigned short	hres,vres;
-	unsigned char	palette[48];
-	char		reserved;
-	char		color_planes;
-	unsigned short	bytes_per_line;
-	unsigned short	palette_type;
-	char		filler[58];
+	uint8_t		manufacturer;
+	uint8_t		version;
+	uint8_t		encoding;
+	uint8_t		bits_per_pixel;
+	uint16_t	xmin,ymin,xmax,ymax;
+	uint16_t	hres,vres;
+	uint8_t		palette[48];
+	uint8_t		reserved;
+	uint8_t		color_planes;
+	uint16_t	bytes_per_line;
+	uint16_t	palette_type;
+	uint8_t		filler[58];
 };
 
 /* Internal API */
-int pcx_load_colormap(const char *name, unsigned char *map);
+int pcx_load_colormap(const char *name, uint8_t *map);
 int pcx_load(const char *name);
 struct image *pcx_get_by_name(const char *name);
 
