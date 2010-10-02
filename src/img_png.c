@@ -114,7 +114,7 @@ static int png_load(const char *name)
 	i->next = pngs;
 	pngs = i;
 
-	return 0;
+	return 1;
 
 err_close:
 	game_close(&i->f);
@@ -123,7 +123,7 @@ err_img:
 err_png:
 	png_destroy_read_struct(&png, &info, NULL);
 err:
-	return -1;
+	return 0;
 }
 
 struct image *png_get_by_name(char *n)
@@ -142,7 +142,7 @@ try_again:
 	if ( again )
 		return NULL;
 
-	if ( png_load(n) )
+	if ( !png_load(n) )
 		return NULL;
 
 	again=1;

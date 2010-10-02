@@ -53,8 +53,8 @@ int cl_init(void)
 	cl_cmd_bind("space", "+jump");
 	cl_cmd_bind("c", "+crouch");
 
-	//if ( !gl_init(1680, 1050, 24, 1) )
-	if ( !gl_init(1024, 768, 24, 0) )
+	if ( !gl_init(1920, 1080, 24, 1) )
+	//if ( !gl_init(1024, 768, 24, 0) )
 		return 0;
 
 	if ( !hud_init() )
@@ -71,8 +71,8 @@ int cl_init(void)
 
 	q2bsp_load("maps/q2dm1.bsp");
 
-	//md5_load("d3/demo/models/md5/monsters/zombies/labcoatzombie.md5mesh",
-	//	"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
+	md5_load("d3/demo/models/md5/monsters/zombies/labcoatzombie.md5mesh",
+		"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
 	return 1;
 }
 

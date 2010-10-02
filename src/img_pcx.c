@@ -72,7 +72,7 @@ static int do_pcx_load(const char *name, uint8_t *map)
 
 	i = calloc(1, sizeof(*i));
 	if ( i == NULL )
-		return -1;
+		return 0;
 
 	if ( !game_open(&i->f, name) )
 		goto err_free;
@@ -116,7 +116,7 @@ static int do_pcx_load(const char *name, uint8_t *map)
 		memcpy(map, pal, PCX_PAL);
 		game_close(&i->f);
 		free(i);
-		return 0;
+		return 1;
 	}
 
 	con_printf("pcx: %s (%ix%i)\n",
@@ -125,12 +125,12 @@ static int do_pcx_load(const char *name, uint8_t *map)
 	i->next = pcxs;
 	pcxs = i;
 
-	return 0;
+	return 1;
 err:
 	game_close(&i->f);
 err_free:
 	free(i);
-	return -1;
+	return 0;
 }
 
 struct image *pcx_get_by_name(const char *n)
@@ -150,7 +150,7 @@ try_again:
 		return NULL;
 
 	/* load from textures/name.wal */
-	if ( pcx_load(n) )
+	if ( !pcx_load(n) )
 		return NULL;
 
 	again = 1;

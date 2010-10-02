@@ -315,7 +315,7 @@ int hud_init(void)
 
 	if ( !(hudmap = calloc(1,  con_x * con_y)) ) {
 		perror("calloc");
-		return -1;
+		return 0;
 	}
 
 	con_printf("\bWelcome to blackbloc\b\n"
@@ -336,7 +336,7 @@ int hud_init(void)
 
 	if( !(conchars=pcx_get_by_name("pics/conchars.pcx")) )
 		return 0;
-	
+
 	if ( !(hudchars=png_get_by_name("pics/hudchars.png")) )
 		return 0;
 

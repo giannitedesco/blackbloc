@@ -1,10 +1,6 @@
 Infrastructure
 --------------
- o gfile re-write
-   - new index types etc...
- o Remove "return -1" error codes from everywhere
  o Headers need re-working
-   - gfile is not client only
    - SDL is required for some headers
    - a lot of implementatin details are public, hide them away
    - OS specific inline functions and shit!
@@ -19,6 +15,7 @@ Infrastructure
  o Review input code
    - tidy up keyboard / cmd_bind code
  o Screenshots
+ o Python integration
 
 Models
 ------
@@ -53,7 +50,7 @@ BSP tools
  o Replace rad with wavelet PRT info etc..
  o Normal-map support
  o Allow patches aswell as brushes
- o new output file format? keep portals?
+ o New output file format? keep portals?
 
 Game
 ----

@@ -53,14 +53,14 @@ struct image *q2wal_get(const char *n)
 	int again = 0;
 
 try_again:
-	if ( (ret=q2wal_find(n)) ) {
+	if ( (ret = q2wal_find(n)) ) {
 		img_get(ret);
 		return ret;
 	}else if ( again ) {
 		return NULL;
 	}
 
-	if ( q2wal_load_by_name(n) )
+	if ( !q2wal_load_by_name(n) )
 		return NULL;
 
 	again++;
@@ -80,7 +80,7 @@ static int q2wal_upload(struct image *wal)
 
 	wal->mipmap[0].pixels = malloc(width * height * 3);
 	if ( wal->mipmap[0].pixels == NULL )
-		return -1;
+		return 0;
 
 	trans = wal->mipmap[0].pixels;
 
@@ -112,7 +112,7 @@ static int q2wal_upload(struct image *wal)
 
 	img_upload_rgb(wal);
 
-	return 0;
+	return 1;
 }
 
 /* Load in a WAL */
@@ -124,9 +124,9 @@ int q2wal_load(const char *name)
 
 	/* Try load the palette if we don't have it */
 	if ( !got_palette ) {
-		if ( pcx_load_colormap("pics/colormap.pcx", palette) < 0 ) {
+		if ( !pcx_load_colormap("pics/colormap.pcx", palette) ) {
 			con_printf("q2wal: error loading palette\n");
-			return -1;
+			return 0;
 		}
 
 		got_palette = 1;
@@ -134,7 +134,7 @@ int q2wal_load(const char *name)
 
 	wal = calloc(1, sizeof(*wal));
 	if ( wal == NULL )
-		return -1;
+		return 0;
 
 	if ( !game_open(&wal->f, name) )
 		goto err_free;
@@ -175,10 +175,10 @@ int q2wal_load(const char *name)
 		name, wal->name, wal->s_width, wal->s_height);
 #endif
 
-	return 0;
+	return 1;
 err:
 	game_close(&wal->f);
 err_free:
 	free(wal);
-	return -1;
+	return 0;
 }
