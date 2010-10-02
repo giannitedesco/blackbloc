@@ -54,9 +54,9 @@ static int dump_align(FILE *f, uint32_t *cur)
 
 static int dump_file(FILE *f, uint32_t *cur, struct file *file)
 {
-	int fd;
 	const uint8_t *map, *ptr;
-	int ret = 0;
+	int fd, ret = 0;
+	size_t sz = ALIGN_GFILE(file->f_asz);
 
 	fd = open(file->f_name, O_RDONLY);
 	if ( fd < 0 ) 
@@ -65,15 +65,15 @@ static int dump_file(FILE *f, uint32_t *cur, struct file *file)
 	/* Why use f_asz and not f_rsz? Simple, PAGE_ALIGN always guarantees
 	 * more than our maximum alignment and slack space is zero filled
 	 */
-	ptr = map = mmap(NULL, file->f_asz, PROT_READ, MAP_SHARED, fd, 0);
+	ptr = map = mmap(NULL, sz, PROT_READ, MAP_SHARED, fd, 0);
 	if ( map == MAP_FAILED)
 		goto err_close;
 
-	if ( fwrite(map, file->f_asz, 1, f) == 1 )
+	if ( fwrite(map, sz, 1, f) == 1 )
 		ret = !ferror(f);
-	*cur += file->f_asz;
+	*cur += sz;
 
-	munmap((void *)map, file->f_asz);
+	munmap((void *)map, sz);
 err_close:
 	close(fd);
 err:
@@ -198,7 +198,7 @@ static int dump_gfile(FILE *f)
 				goto err_free;
 		}
 		f_arr[i].f_rsz = m->m_size;
-		f_arr[i].f_asz = ALIGN_GFILE(m->m_size);
+		f_arr[i].f_asz = m->m_size;
 	}
 
 	assert(i == num_files);
@@ -218,7 +218,7 @@ static int dump_gfile(FILE *f)
 	qsort(f_arr, num_files, sizeof(*f_arr), fcmp_sz);
 	for(i = 0; i < num_files; i++) {
 		f_arr[i].f_ofs = aligned_sz;
-		aligned_sz += f_arr[i].f_asz;
+		aligned_sz += ALIGN_GFILE(f_arr[i].f_asz);
 		strtab_sz += strlen(f_arr[i].f_name) + 1;
 	}
 
