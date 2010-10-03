@@ -58,10 +58,17 @@ static int prep(struct _texture *tex, unsigned int mip)
 	return 1;
 }
 
+static void png_dtor(struct _texture *tex)
+{
+	struct _png_img *png = (struct _png_img *)tex;
+	list_del(&png->list);
+	free(png);
+}
+
 static const struct _texops ops_rgb = {
 	.prep = prep,
 	.upload = teximg_upload_rgb,
-	.dtor = teximg_dtor_generic,
+	.dtor = png_dtor,
 	.width = png_width,
 	.height = png_height,
 };
@@ -69,7 +76,7 @@ static const struct _texops ops_rgb = {
 static const struct _texops ops_rgba = {
 	.prep = prep,
 	.upload = teximg_upload_rgba,
-	.dtor = teximg_dtor_generic,
+	.dtor = png_dtor,
 	.width = png_width,
 	.height = png_height,
 };

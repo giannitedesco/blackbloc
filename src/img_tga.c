@@ -58,10 +58,17 @@ static unsigned int tga_height(struct _texture *tex)
 	return tga->height;
 }
 
+static void tga_dtor(struct _texture *tex)
+{
+	struct _tga_img *tga = (struct _tga_img *)tex;
+	list_del(&tga->list);
+	free(tga);
+}
+
 static const struct _texops ops_24 = {
 	.prep = prep_uncompressed,
 	.upload = teximg_upload_bgr,
-	.dtor = teximg_dtor_generic,
+	.dtor = tga_dtor,
 	.width = tga_width,
 	.height = tga_height,
 };
@@ -69,7 +76,7 @@ static const struct _texops ops_24 = {
 static const struct _texops ops_32 = {
 	.prep = prep_uncompressed,
 	.upload = teximg_upload_bgra,
-	.dtor = teximg_dtor_generic,
+	.dtor = tga_dtor,
 	.width = tga_width,
 	.height = tga_height,
 };
@@ -78,7 +85,7 @@ static const struct _texops ops_rle24 = {
 	.prep = prep_rle,
 	.unprep = teximg_unprep_generic,
 	.upload = teximg_upload_rgb,
-	.dtor = teximg_dtor_generic,
+	.dtor = tga_dtor,
 	.width = tga_width,
 	.height = tga_height,
 };
@@ -87,7 +94,7 @@ static const struct _texops ops_rle32 = {
 	.prep = prep_rle,
 	.unprep = teximg_unprep_generic,
 	.upload = teximg_upload_rgba,
-	.dtor = teximg_dtor_generic,
+	.dtor = tga_dtor,
 	.width = tga_width,
 	.height = tga_height,
 };

@@ -145,11 +145,18 @@ static unsigned int pcx_height(struct _texture *tex)
 	return pcx->height;
 }
 
+static void pcx_dtor(struct _texture *tex)
+{
+	struct _pcx_img *pcx = (struct _pcx_img *)tex;
+	list_del(&pcx->list);
+	free(pcx);
+}
+
 static const struct _texops pcx_ops = {
 	.prep = pcx_prep,
 	.unprep = teximg_unprep_generic,
 	.upload = teximg_upload_rgba,
-	.dtor = teximg_dtor_generic,
+	.dtor = pcx_dtor,
 	.width = pcx_width,
 	.height = pcx_height,
 };
