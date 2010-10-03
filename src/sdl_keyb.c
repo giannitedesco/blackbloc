@@ -100,7 +100,7 @@ static void sdl_keyb_default(uint16_t k)
 		return;
 
 	if ( state || binds[key].cmd->name[0] == '+' )
-		binds[key].cmd->fn(state);
+		binds[key].cmd->fn(state, NULL);
 }
 
 void sdl_keyb_ungrab(void)

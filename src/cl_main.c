@@ -71,11 +71,27 @@ int cl_init(void)
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
 
-	//map = q2bsp_load("maps/q2dm1.bsp");
-
 	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
 		"data/d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
 	return 1;
+}
+
+void clcmd_map(int s, char *arg)
+{
+	q2bsp_t tmp_map;
+
+	char buf[strlen(arg) + strlen("maps/.bsp") + 1];
+
+	snprintf(buf, sizeof(buf), "maps/%s.bsp", arg);
+
+	tmp_map = q2bsp_load(buf);
+	if ( NULL == tmp_map ) {
+		con_printf("%s: map not found\n", buf);
+		return;
+	}
+
+	q2bsp_free(map);
+	map = tmp_map;
 }
 
 void cl_render(void)

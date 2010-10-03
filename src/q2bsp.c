@@ -144,11 +144,20 @@ static void build_polygon(struct _q2bsp *map, struct bsp_msurface *fa)
 			vec = map->mvert[r_pedge->v[1]].point;
 		}
 
-		s = v_dotproduct(vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
-		s /= tex_width(fa->texinfo->image);
+		s = v_dotproduct(vec, fa->texinfo->vecs[0]) +
+					fa->texinfo->vecs[0][3];
 
-		t = v_dotproduct(vec, fa->texinfo->vecs[1]) + fa->texinfo->vecs[1][3];
-		t /= tex_height(fa->texinfo->image);
+		t = v_dotproduct(vec, fa->texinfo->vecs[1]) +
+					fa->texinfo->vecs[1][3];
+
+		if ( tex_height(fa->texinfo->image) ==
+			tex_width(fa->texinfo->image) ) {
+			t /= 64.0f;
+			s /= 64.0f;
+		}else{
+			t /= tex_height(fa->texinfo->image);
+			s /= tex_width(fa->texinfo->image);
+		}
 
 		poly->verts[i][0] = vec[0];
 		poly->verts[i][1] = vec[1];
@@ -156,13 +165,15 @@ static void build_polygon(struct _q2bsp *map, struct bsp_msurface *fa)
 		poly->verts[i][3] = s;
 		poly->verts[i][4] = t;
 
-		s = v_dotproduct(vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
+		s = v_dotproduct(vec, fa->texinfo->vecs[0]) +
+					fa->texinfo->vecs[0][3];
 		s -= fa->texturemins[0];
 		s += fa->light_s * 16;
 		s += 8;
 		s /= BLOCK_WIDTH*16;
 
-		t = v_dotproduct(vec, fa->texinfo->vecs[1]) + fa->texinfo->vecs[1][3];
+		t = v_dotproduct(vec, fa->texinfo->vecs[1]) +
+					fa->texinfo->vecs[1][3];
 		t -= fa->texturemins[1];
 		t += fa->light_t * 16;
 		t += 8;
@@ -738,12 +749,13 @@ static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
 				in->texture);
 			return 0;
 		}
+		map->num_mtex++;
 	}
 
 	/* Count animation frames */
-	for(i=0; i<count; i++) {
+	for(i=0; i < count; i++) {
 		out = &map->mtex[i];
-		out->numframes=1;
+		out->numframes = 1;
 		for(step=out->next; step && step != out; step=step->next)
 			out->numframes++;
 	}
@@ -753,6 +765,7 @@ static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
 
 static void do_free(struct _q2bsp *map)
 {
+	unsigned int i;
 	free(map->mtex);
 	free(map->mvert);
 	free(map->medge);
@@ -764,7 +777,8 @@ static void do_free(struct _q2bsp *map)
 	free(map->visofs);
 	free(map->msurfedge);
 	free(map->vis);
-	/* FIXME: put all textures */
+	for(i = 0; i < map->num_mtex; i++)
+		tex_put(map->mtex[i].image);
 	free(map);
 }
 

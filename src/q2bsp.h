@@ -301,6 +301,7 @@ struct _q2bsp {
 	struct bsp_mleaf *mleaf;
 	struct bsp_mnode *mnode;
 	struct bsp_vis *visofs;
+	unsigned int num_mtex;
 	int *msurfedge;
 	int nummarksurfaces;
 	int numsurfaces;

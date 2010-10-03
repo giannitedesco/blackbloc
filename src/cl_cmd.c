@@ -11,16 +11,64 @@
 #include <blackbloc/hud.h>
 #include <blackbloc/sdl_keyb.h>
 
-void cl_cmd_run(char *cmd)
+/* Easy string tokeniser */
+int easy_explode(char *str, char split,
+			char **toks, int max_toks)
 {
-	struct cl_cmd *c = cl_cmd_by_name(cmd);
+	char *tmp;
+	int tok;
+	int state;
 
-	if ( !c ) {
-		con_printf("%s: Unknown command\n", cmd);
+	for(tmp=str,state=tok=0; *tmp && tok <= max_toks; tmp++) {
+		if ( state == 0 ) {
+			if ( *tmp == split && (tok < max_toks)) {
+				toks[tok++] = NULL;
+			}else if ( !isspace(*tmp) ) {
+				state = 1;
+				toks[tok++] = tmp;
+			}
+		}else if ( state == 1 ) {
+			if ( tok < max_toks ) {
+				if ( *tmp == split || isspace(*tmp) ) {
+					*tmp = '\0';
+					state = 0;
+				}
+			}else if ( *tmp == '\n' )
+				*tmp = '\0';
+		}
+	}
+
+	return tok;
+}
+
+void cl_cmd_run(const char *cmd)
+{
+	char *tok[2];
+	char *buf;
+	struct cl_cmd *c;
+	int ret;
+
+	buf = strdup(cmd);
+	if ( NULL == buf )
+		return;
+	
+	ret = easy_explode(buf, 0, tok, sizeof(tok)/sizeof(*tok));
+	if ( ret <= 0 ) {
+		free(buf);
+		return;
+	}
+	if ( ret == 1 )
+		tok[1] = NULL;
+
+	c = cl_cmd_by_name(tok[0]);
+	if ( NULL == c ) {
+		con_printf("%s: Unknown command\n", tok[0]);
+		free(buf);
 		return;
 	}
 
-	c->fn(1);
+	c->fn(1, tok[1]);
+	free(buf);
 }
 
 int cl_cmd_bind(const char *k, const char *c)
@@ -44,33 +92,34 @@ int cl_cmd_bind(const char *k, const char *c)
 	return 1;
 }
 
-static void clcmd_console(int s)
+static void clcmd_console(int s, char *arg)
 {
 	hud_toggle_console();
 }
 
-static void clcmd_quit(int s)
+static void clcmd_quit(int s, char *arg)
 {
 	cl_alive = 0;
 }
 
-static void clcmd_wireframe(int s)
+static void clcmd_wireframe(int s, char *arg)
 {
 	gl_render_toggle_wireframe();
 }
 
-static void clcmd_binds(int s)
+static void clcmd_binds(int s, char *arg)
 {
 	sdl_keyb_print();
 }
 
-static void clcmd_help(int s);
+static void clcmd_help(int s, char *arg);
 
 /* List of all registered client commands */
 static struct cl_cmd command[]={
 	{clcmd_wireframe, "wireframe", "Toggle wireframe rendering"},
-	{clcmd_binds, "binds", "Show key bindings"},
 	{clcmd_forwards, "+forwards", "Walk forwards"},
+	{clcmd_binds, "binds", "Show key bindings"},
+	{clcmd_map, "map", "Load map"},
 	{clcmd_backwards, "+backwards", "Walk backwards"},
 	{clcmd_strafe_left, "+strafe_left", "Strafe left"},
 	{clcmd_strafe_right, "+strafe_right", "Strafe right"},
@@ -81,7 +130,7 @@ static struct cl_cmd command[]={
 	{clcmd_console, "console", "Toggle the console"},
 };
 
-static void clcmd_help(int s)
+static void clcmd_help(int s, char *arg)
 {
 	unsigned int i;
 	con_printf("Command List:\n");

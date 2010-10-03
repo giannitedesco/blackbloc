@@ -120,6 +120,9 @@ static inline const char *load_err(const char *msg)
 
 void con_printf(const char *fmt, ...);
 
+int easy_explode(char *str, char split,
+			char **toks, int max_toks);
+
 /* Filesystem I/O API */
 int game_open(struct gfile *f, const char *name);
 void game_close(struct gfile *f);

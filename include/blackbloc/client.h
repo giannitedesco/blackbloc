@@ -15,7 +15,7 @@ struct playerstate {
 };
 
 struct cl_cmd {
-	void(*fn)(int);
+	void(*fn)(int state, char *args);
 	const char *name;
 	const char *help;
 };
@@ -39,7 +39,7 @@ void cl_render(void);
 /* Command access API */
 struct cl_cmd *cl_cmd_by_name(const char *cmd);
 int cl_cmd_bind(const char *k, const char *c);
-void cl_cmd_run(char *cmd);
+void cl_cmd_run(const char *cmd);
 
 /* Keyboard binding API */
 void sdl_keyb_bind(int, struct cl_cmd *);
@@ -47,16 +47,18 @@ void sdl_keyb_unbind(int);
 int sdl_keyb_code(const char *);
 
 /* Command hooks */
-void clcmd_forwards(int);
-void clcmd_backwards(int);
-void clcmd_strafe_left(int);
-void clcmd_strafe_right(int);
-void clcmd_crouch(int);
-void clcmd_jump(int);
+void clcmd_forwards(int, char *);
+void clcmd_backwards(int, char *);
+void clcmd_strafe_left(int, char *);
+void clcmd_strafe_right(int, char *);
+void clcmd_crouch(int, char *);
+void clcmd_jump(int, char *);
+void clcmd_map(int, char *);
 
 void cl_move(void);
 void cl_viewangles(vector_t angles);
 void cl_origin(vector_t origin);
+
 
 /* model wrappers */
 static inline void

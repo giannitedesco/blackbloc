@@ -66,32 +66,32 @@ void cl_move(void)
 	me.origin[Y] += h;
 }
 
-void clcmd_forwards(int s)
+void clcmd_forwards(int s, char *arg)
 {
 	mf = s;
 }
 
-void clcmd_backwards(int s)
+void clcmd_backwards(int s, char *arg)
 {
 	mb = s;
 }
 
-void clcmd_strafe_left(int s)
+void clcmd_strafe_left(int s, char *arg)
 {
 	ml = s;
 }
 
-void clcmd_strafe_right(int s)
+void clcmd_strafe_right(int s, char *arg)
 {
 	mr = s;
 }
 
-void clcmd_crouch(int s)
+void clcmd_crouch(int s, char *arg)
 {
 	md = s;
 }
 
-void clcmd_jump(int s)
+void clcmd_jump(int s, char *arg)
 {
 	mu = s;
 }
