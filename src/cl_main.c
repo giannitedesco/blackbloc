@@ -14,12 +14,15 @@
 #include <blackbloc/gfile.h>
 #include <blackbloc/model/md2.h>
 #include <blackbloc/model/md5.h>
+#include <blackbloc/map/q2bsp.h>
 
 frame_t client_frame;
 int cl_alive = 1;
 struct playerstate me={
 	.viewoffset = {0, 40, 0},
 };
+
+static q2bsp_t map;
 
 static struct cl_ent ent;
 static gfs_t gfs;
@@ -68,7 +71,7 @@ int cl_init(void)
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
 
-	q2bsp_load("maps/q2dm1.bsp");
+	map = q2bsp_load("maps/q2dm1.bsp");
 
 	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
 		"data/d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
@@ -77,7 +80,8 @@ int cl_init(void)
 
 void cl_render(void)
 {
-	//q2bsp_render();
+	if ( map )
+		q2bsp_render(map);
 	md5_render();
 	//cl_model_render(&ent);
 }

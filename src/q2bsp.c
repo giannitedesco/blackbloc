@@ -18,67 +18,39 @@
 
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/gfile.h>
+#include <blackbloc/client.h>
 #include <blackbloc/teximage.h>
 #include <blackbloc/img/q2wal.h>
 #include <blackbloc/img/tga.h>
-#include <blackbloc/client.h>
+#include <blackbloc/map/q2bsp.h>
+
 #include "q2bsp.h"
 
-static struct bsp_mtexinfo *mtex;
-static struct bsp_vertex *mvert;
-static struct bsp_medge *medge;
-static struct bsp_mplane *mplane;
-static struct bsp_msurface *msurface;
-static struct bsp_msurface **marksurface;
-static struct bsp_mleaf *mleaf;
-static struct bsp_mnode *mnode;
-static struct bsp_vis *visofs;
-static int *msurfedge;
-static int nummarksurfaces;
-static int numsurfaces;
-static int numsurfedges;
-static int numplanes;
-static int numleafs;
-static int numnodes;
-static int numedges;
-static const unsigned char *map_visibility;
-static const unsigned char *lightdata;
-static unsigned char *vis;
+static void R_BuildLightMap(struct _q2bsp *bsp, struct bsp_msurface *surf,
+				unsigned char *dest, int stride);
 
-#define BLOCK_WIDTH 128
-#define BLOCK_HEIGHT 128
-#define LIGHTMAP_BYTES 4
-#define GL_LIGHTMAP_FORMAT GL_RGBA
-
-static int current_lightmap_texture;
-static unsigned char lightmap_buffer[4*BLOCK_WIDTH*BLOCK_HEIGHT];
-static int allocated[BLOCK_WIDTH];
-static unsigned int lm_textures;
-static float s_blocklights[34*34*3];
-
-static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride);
-
-static void lm_upload_block(void)
+static void lm_upload_block(struct _q2bsp *map)
 {
 	int texture;
 
-	texture = lm_textures + current_lightmap_texture;
+	texture = map->lm_textures + map->current_lightmap_texture;
 
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, BLOCK_WIDTH, BLOCK_HEIGHT,
-			0, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, lightmap_buffer);
+			0, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE,
+			map->lightmap_buffer);
 
-	current_lightmap_texture++;
+	map->current_lightmap_texture++;
 }
 
-static void lm_init_block(void)
+static void lm_init_block(struct _q2bsp *map)
 {
-	memset(allocated, 0, sizeof(allocated));
+	memset(map->allocated, 0, sizeof(map->allocated));
 }
 
-static int lm_alloc_block(int w, int h, int *x, int *y)
+static int lm_alloc_block(struct _q2bsp *map, int w, int h, int *x, int *y)
 {
 	int i, j;
 	int best, best2;
@@ -88,10 +60,10 @@ static int lm_alloc_block(int w, int h, int *x, int *y)
 	for(i=0; i<BLOCK_WIDTH-w; i++) {
 		best2 = 0;
 		for(j=0; j<w; j++) {
-			if ( allocated[i+j] >= best )
+			if ( map->allocated[i+j] >= best )
 				break;
-			if ( allocated[i+j] > best2 )
-				best2 = allocated[i+j];
+			if ( map->allocated[i+j] > best2 )
+				best2 = map->allocated[i+j];
 		}
 		if ( j == w ) {
 			*x = i;
@@ -103,12 +75,12 @@ static int lm_alloc_block(int w, int h, int *x, int *y)
 		return 0;
 
 	for(i=0; i<w; i++)
-		allocated[*x + i] = best + h;
+		map->allocated[*x + i] = best + h;
 
 	return 1;
 }
 
-static void build_lightmap(struct bsp_msurface *surf)
+static void build_lightmap(struct _q2bsp *map, struct bsp_msurface *surf)
 {
 	int smax, tmax;
 	unsigned char *base;
@@ -121,11 +93,11 @@ static void build_lightmap(struct bsp_msurface *surf)
 	smax = (surf->extents[0]>>4)+1;
 	tmax = (surf->extents[1]>>4)+1;
 
-	if ( !lm_alloc_block(smax, tmax,
+	if ( !lm_alloc_block(map, smax, tmax,
 			&surf->light_s, &surf->light_t) ) {
-		lm_upload_block();
-		lm_init_block();
-		if ( !lm_alloc_block(smax, tmax,
+		lm_upload_block(map);
+		lm_init_block(map);
+		if ( !lm_alloc_block(map, smax, tmax,
 				&surf->light_s, &surf->light_t) ) {
 			surf->lightmaptexturenum = -1;
 			return;
@@ -133,16 +105,16 @@ static void build_lightmap(struct bsp_msurface *surf)
 
 	}
 
-	surf->lightmaptexturenum = current_lightmap_texture;
+	surf->lightmaptexturenum = map->current_lightmap_texture;
 
-	base = lightmap_buffer;
+	base = map->lightmap_buffer;
 	base += (surf->light_t * BLOCK_WIDTH + surf->light_s) *
 			LIGHTMAP_BYTES;
 
-	R_BuildLightMap(surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
+	R_BuildLightMap(map, surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
 }
 
-static void build_polygon(struct bsp_msurface *fa)
+static void build_polygon(struct _q2bsp *map, struct bsp_msurface *fa)
 {
 	int i, lindex, lnumverts;
 	struct bsp_medge *r_pedge;
@@ -162,14 +134,14 @@ static void build_polygon(struct bsp_msurface *fa)
 
 	for (i=0 ; i<lnumverts ; i++)
 	{
-		lindex = msurfedge[fa->firstedge + i];
+		lindex = map->msurfedge[fa->firstedge + i];
 
 		if (lindex > 0) {
-			r_pedge = medge + lindex;
-			vec = mvert[r_pedge->v[0]].point;
+			r_pedge = map->medge + lindex;
+			vec = map->mvert[r_pedge->v[0]].point;
 		}else{
-			r_pedge = medge - lindex;
-			vec = mvert[r_pedge->v[1]].point;
+			r_pedge = map->medge - lindex;
+			vec = map->mvert[r_pedge->v[1]].point;
 		}
 
 		s = v_dotproduct(vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
@@ -203,7 +175,7 @@ static void build_polygon(struct bsp_msurface *fa)
 	poly->numverts = lnumverts;
 }
 
-static void CalcSurfaceExtents(struct bsp_msurface *s)
+static void CalcSurfaceExtents(struct _q2bsp *map, struct bsp_msurface *s)
 {
 	float	mins[2], maxs[2], val;
 	int		i,j, e;
@@ -218,11 +190,11 @@ static void CalcSurfaceExtents(struct bsp_msurface *s)
 	
 	for (i=0 ; i<s->numedges ; i++)
 	{
-		e = msurfedge[s->firstedge+i];
+		e = map->msurfedge[s->firstedge+i];
 		if (e >= 0)
-			v = mvert + medge[e].v[0];
+			v = map->mvert + map->medge[e].v[0];
 		else
-			v = mvert + medge[-e].v[1];
+			v = map->mvert + map->medge[-e].v[1];
 		
 		for (j=0 ; j<2 ; j++)
 		{
@@ -247,7 +219,7 @@ static void CalcSurfaceExtents(struct bsp_msurface *s)
 	}
 }
 
-static int q2bsp_submodels(const void *data, uint32_t len)
+static int q2bsp_submodels(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_model *in;
 	struct bsp_model *out;
@@ -271,6 +243,8 @@ static int q2bsp_submodels(const void *data, uint32_t len)
 		return 0;
 	}
 
+	/* TODO */
+
 	return 1;
 }
 
@@ -283,13 +257,13 @@ static void node_set_parent(struct bsp_mnode *n, struct bsp_mnode *p)
 	node_set_parent(n->children[1], n);
 }
 
-static int q2bsp_nodes(const void *data, uint32_t len)
+static int q2bsp_nodes(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_node *in;
 	struct bsp_mnode *out;
 	int i, j, p, count;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -307,46 +281,48 @@ static int q2bsp_nodes(const void *data, uint32_t len)
 		return 0;
 	}
 
-	mnode=out;
-	numnodes=count;
+	map->mnode = out;
+	map->numnodes = count;
 
 	for(i=0; i<count; i++, in++, out++) {
-		out->mins[0] = (short)le_16(in->mins[1]);
-		out->mins[1] = (short)le_16(in->mins[2]);
-		out->mins[2] = (short)le_16(in->mins[0]);
-		out->maxs[0] = (short)le_16(in->maxs[1]);
-		out->maxs[1] = (short)le_16(in->maxs[2]);
-		out->maxs[2] = (short)le_16(in->maxs[0]);
+		out->mins[0] = (short)le16toh(in->mins[1]);
+		out->mins[1] = (short)le16toh(in->mins[2]);
+		out->mins[2] = (short)le16toh(in->mins[0]);
+		out->maxs[0] = (short)le16toh(in->maxs[1]);
+		out->maxs[1] = (short)le16toh(in->maxs[2]);
+		out->maxs[2] = (short)le16toh(in->maxs[0]);
 
 		p = le_32(in->planenum);
-		out->plane = mplane + p;
+		out->plane = map->mplane + p;
 
-		out->firstsurface = le_16(in->firstface);
-		out->numsurfaces = le_16(in->numfaces);
+		out->firstsurface = le16toh(in->firstface);
+		out->numsurfaces = le16toh(in->numfaces);
 		out->contents = -1; /* diferrenciate from leafs */
 		out->visframe = 0;
 
 		for(j=0; j<2; j++) {
 			p = le_32(in->children[j]);
 			if ( p>= 0 )
-				out->children[j] = mnode + p;
+				out->children[j] = map->mnode + p;
 			else
-				out->children[j] = (struct bsp_mnode *)mleaf + (-1 - p);
+				out->children[j] =
+					(struct bsp_mnode *)map->mleaf +
+								(-1 - p);
 		}
 	}
 
-	node_set_parent(mnode, NULL);
+	node_set_parent(map->mnode, NULL);
 
 	return 1;
 }
 
-static int q2bsp_leafs(const void *data, uint32_t len)
+static int q2bsp_leafs(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_leaf *in;
 	struct bsp_mleaf *out;
 	int i, p, count;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -364,46 +340,46 @@ static int q2bsp_leafs(const void *data, uint32_t len)
 		return 0;
 	}
 
-	mleaf = out;
-	numleafs = count;
+	map->mleaf = out;
+	map->numleafs = count;
 
 	for(i=0; i<count; i++, in++, out++) {
-		out->mins[0] = (short)le_16(in->mins[1]);
-		out->mins[1] = (short)le_16(in->mins[2]);
-		out->mins[2] = (short)le_16(in->mins[0]);
-		out->maxs[0] = (short)le_16(in->maxs[1]);
-		out->maxs[1] = (short)le_16(in->maxs[2]);
-		out->maxs[2] = (short)le_16(in->maxs[0]);
+		out->mins[0] = (short)le16toh(in->mins[1]);
+		out->mins[1] = (short)le16toh(in->mins[2]);
+		out->mins[2] = (short)le16toh(in->mins[0]);
+		out->maxs[0] = (short)le16toh(in->maxs[1]);
+		out->maxs[1] = (short)le16toh(in->maxs[2]);
+		out->maxs[2] = (short)le16toh(in->maxs[0]);
 
 		p = (int)le_32(in->contents);
 		out->contents = p;
 
-		out->cluster = (short)le_16(in->cluster);
-		out->area = (short)le_16(in->area);
-		out->firstmarksurface = marksurface +
-			le_16(in->firstleafface);
-		out->nummarksurfaces = le_16(in->numleaffaces);
+		out->cluster = (short)le16toh(in->cluster);
+		out->area = (short)le16toh(in->area);
+		out->firstmarksurface = map->marksurface +
+			le16toh(in->firstleafface);
+		out->nummarksurfaces = le16toh(in->numleaffaces);
 		out->visframe = 0;
 	}
 
 	return 1;
 }
 
-static int q2bsp_visibility(const void *data, uint32_t len)
+static int q2bsp_visibility(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_vis *in = data;
 	struct bsp_vis *out;
 	int num = le_32(in->numclusters);
 	int i;
 
-	map_visibility = data;
+	map->map_visibility = data;
 
 	if ( !(out=malloc(num * sizeof(*out))) ) {
 		con_printf("q2bsp: vis oom\n");
 		return 0;
 	}
 
-	if ( !(vis=malloc(num>>3)) ) {
+	if ( !(map->vis=malloc(num>>3)) ) {
 		con_printf("q2bsp: vis oom 2\n");
 		return 0;
 	}
@@ -415,18 +391,18 @@ static int q2bsp_visibility(const void *data, uint32_t len)
 		out->bitofs[i][DVIS_PHS] = le_32(in->bitofs[i][DVIS_PHS]);
 	}
 
-	visofs = out;
+	map->visofs = out;
 
 	return 1;
 }
 
-static int q2bsp_marksurfaces(const void *data, uint32_t len)
+static int q2bsp_marksurfaces(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	int i, j, count;
 	const short *in;
 	struct bsp_msurface **out;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -444,22 +420,22 @@ static int q2bsp_marksurfaces(const void *data, uint32_t len)
 		return 0;
 	}
 
-	marksurface = out;
-	nummarksurfaces = count;
+	map->marksurface = out;
+	map->nummarksurfaces = count;
 
 	for(i=0; i<count; i++) {
-		j = (short)le_16(in[i]);
-		if ( j<0 || j>= numsurfaces ) {
+		j = (short)le16toh(in[i]);
+		if ( j < 0 || j >= map->numsurfaces ) {
 			con_printf("q2bsp: bad leaf face surface number\n");
 			return 0;
 		}
-		out[i] = msurface + j;
+		out[i] = map->msurface + j;
 	}
 
 	return 1;
 }
 
-static int q2bsp_faces(const void *data, uint32_t len)
+static int q2bsp_faces(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_face *in;
 	struct bsp_msurface *out;
@@ -467,7 +443,7 @@ static int q2bsp_faces(const void *data, uint32_t len)
 	int planenum, side;
 	int i;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -485,30 +461,30 @@ static int q2bsp_faces(const void *data, uint32_t len)
 		return 0;
 	}
 
-	msurface = out;
-	numsurfaces = count;
+	map->msurface = out;
+	map->numsurfaces = count;
 
-	current_lightmap_texture = 1;
-	lm_textures = 1024;
-	lm_init_block();
+	map->current_lightmap_texture = 1;
+	map->lm_textures = 1024;
+	lm_init_block(map);
 
 	for(surfnum=0; surfnum<count; surfnum++, in++, out++) {
 		out->firstedge = (int)le_32(in->firstedge);
-		out->numedges = (short)le_16(in->numedges);
+		out->numedges = (short)le16toh(in->numedges);
 		out->flags = 0;
 		out->polys = NULL;
 		out->visframe = 0;
 
-		planenum = le_16(in->planenum);
-		side = (short)le_16(in->side);
+		planenum = le16toh(in->planenum);
+		side = (short)le16toh(in->side);
 		if ( side )
 			out->flags |= SURF_PLANEBACK;
 
 		/* XXX: check both of these */
-		out->plane = mplane + planenum;
-		out->texinfo = mtex + le_16(in->texinfo);
+		out->plane = map->mplane + planenum;
+		out->texinfo = map->mtex + le16toh(in->texinfo);
 
-		CalcSurfaceExtents(out);
+		CalcSurfaceExtents(map, out);
 
 		for(i=0; i<MAXLIGHTMAPS; i++)
 			out->styles[i] = in->styles[i];
@@ -517,31 +493,31 @@ static int q2bsp_faces(const void *data, uint32_t len)
 		if ( i == -1 )
 			out->samples = NULL;
 		else
-			out->samples = (void *)(lightdata + i);
+			out->samples = (void *)(map->lightdata + i);
 
 		/* Create lightmaps */
 		if ( !(out->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP)) ) {
-			build_lightmap(out);
+			build_lightmap(map, out);
 		}else{
 			out->lightmaptexturenum = -1;
 		}
 
 		/* Create Polygon */
-		build_polygon(out);
+		build_polygon(map, out);
 	}
 
-	lm_upload_block();
+	lm_upload_block(map);
 	return 1;
 }
 
-static int q2bsp_planes(const void *data, uint32_t len)
+static int q2bsp_planes(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_plane *in;
 	struct bsp_mplane *out;
 	int i, count;
 	int bits;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -559,8 +535,8 @@ static int q2bsp_planes(const void *data, uint32_t len)
 		return 0;
 	}
 
-	mplane = out;
-	numplanes = count;
+	map->mplane = out;
+	map->numplanes = count;
 
 	for(i=0; i<count; i++,in++,out++) {
 		bits=0;
@@ -590,13 +566,13 @@ static int q2bsp_planes(const void *data, uint32_t len)
 	return 1;
 }
 
-static int q2bsp_lighting(const void *data, uint32_t len)
+static int q2bsp_lighting(struct _q2bsp *map, const void *data, uint32_t len)
 {
-	lightdata = data;
+	map->lightdata = data;
 	return 1;
 }
 
-static int q2bsp_surfedges(const void *data, uint32_t len)
+static int q2bsp_surfedges(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const int *in;
 	int i, count, *out;
@@ -619,22 +595,22 @@ static int q2bsp_surfedges(const void *data, uint32_t len)
 		return 0;
 	}
 
-	msurfedge=out;
-	numsurfedges=count;
+	map->msurfedge = out;
+	map->numsurfedges = count;
 
-	for(i=0; i<count; i++, out++, in++)
-		*out = le_32(*in);
+	for(i = 0; i < count; i++, out++, in++)
+		*out = le32toh(*in);
 
 	return 1;
 }
 
-static int q2bsp_edges(const void *data, uint32_t len)
+static int q2bsp_edges(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_edge *in;
 	struct bsp_medge *out;
 	int i, count;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -652,18 +628,18 @@ static int q2bsp_edges(const void *data, uint32_t len)
 		return 0;
 	}
 
-	medge = out;
-	numedges = count;
+	map->medge = out;
+	map->numedges = count;
 
 	for(i=0; i<count; i++,in++,out++) {
-		out->v[0] = (short)le_16(in->v[0]);
-		out->v[1] = (short)le_16(in->v[1]);
+		out->v[0] = (short)le16toh(in->v[0]);
+		out->v[1] = (short)le16toh(in->v[1]);
 	}
 
 	return 1;
 }
 
-static int q2bsp_vertexes(const void *data, int len)
+static int q2bsp_vertexes(struct _q2bsp *map, const void *data, int len)
 {
 	const struct bsp_vertex *in;
 	struct bsp_vertex *out;
@@ -688,7 +664,7 @@ static int q2bsp_vertexes(const void *data, int len)
 		return 0;
 	}
 
-	mvert = out;
+	map->mvert = out;
 
 	for(i=0; i<count; i++,in++,out++) {
 		out->point[0] = le_float(in->point[1]);
@@ -713,13 +689,13 @@ static struct image *get_texture(const char *name)
 	return q2wal_get(name);
 }
 
-static int q2bsp_texinfo(const void *data, uint32_t len)
+static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_texinfo *in;
 	struct bsp_mtexinfo *out, *step;
 	int count, i, j, next;
 
-	in=data;
+	in = data;
 	count = len / sizeof(*in);
 
 	if ( len % sizeof(*in) ) {
@@ -737,7 +713,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 		return 0;
 	}
 
-	mtex = out;
+	map->mtex = out;
 
 	for(i=0; i < count; i++, in++, out++) {
 		for(j=0; j<2; j++) {
@@ -752,7 +728,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 		/* XXX: Needs checking */
 		next = le_32(in->nexttexinfo);
 		if (next > 0)
-			out->next = mtex + next;
+			out->next = map->mtex + next;
 		else
 			out->next = NULL;
 
@@ -766,7 +742,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 
 	/* Count animation frames */
 	for(i=0; i<count; i++) {
-		out=&mtex[i];
+		out = &map->mtex[i];
 		out->numframes=1;
 		for(step=out->next; step && step != out; step=step->next)
 			out->numframes++;
@@ -775,12 +751,42 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 	return 1;
 }
 
-int q2bsp_load(char *name)
+static void do_free(struct _q2bsp *map)
 {
+	free(map->mtex);
+	free(map->mvert);
+	free(map->medge);
+	free(map->mplane);
+	free(map->msurface);
+	free(map->marksurface);
+	free(map->mleaf);
+	free(map->mnode);
+	free(map->visofs);
+	free(map->msurfedge);
+	free(map->vis);
+	/* FIXME: put all textures */
+	free(map);
+}
+
+void q2bsp_free(q2bsp_t map)
+{
+	if ( map )
+		do_free(map);
+}
+
+q2bsp_t q2bsp_load(const char *name)
+{
+	struct _q2bsp *map;
 	struct gfile f;
 	struct bsp_header hdr;
 	uint32_t *tmp;
 	unsigned int i;
+
+	map = calloc(1, sizeof(*map));
+	if ( NULL == map ) {
+		con_printf("bsp: %s: %s\n", name, get_err());
+		goto err;
+	}
 
 	if ( !game_open(&f, name) ) {
 		con_printf("bsp: %s not found\n", name);
@@ -795,9 +801,8 @@ int q2bsp_load(char *name)
 	/* Byteswap header */
 	memcpy(&hdr, f.f_ptr, sizeof(hdr));
 	tmp = (uint32_t *)&hdr;
-	for(i = 0; i < sizeof(hdr) / sizeof(*tmp); i++) {
-		tmp[i] = le_32(tmp[i]);
-	}
+	for(i = 0; i < sizeof(hdr) / sizeof(*tmp); i++)
+		tmp[i] = le32toh(tmp[i]);
 
 	/* Check header */
 	if ( hdr.ident != IDBSPHEADER ||
@@ -816,41 +821,41 @@ int q2bsp_load(char *name)
 		}
 	}
 
-	q2bsp_vertexes(f.f_ptr + hdr.lumps[LUMP_VERTEXES].ofs,
+	q2bsp_vertexes(map, f.f_ptr + hdr.lumps[LUMP_VERTEXES].ofs,
 			hdr.lumps[LUMP_VERTEXES].len);
-	q2bsp_edges(f.f_ptr + hdr.lumps[LUMP_EDGES].ofs,
+	q2bsp_edges(map, f.f_ptr + hdr.lumps[LUMP_EDGES].ofs,
 			hdr.lumps[LUMP_EDGES].len);
-	q2bsp_surfedges(f.f_ptr + hdr.lumps[LUMP_SURFEDGES].ofs,
+	q2bsp_surfedges(map, f.f_ptr + hdr.lumps[LUMP_SURFEDGES].ofs,
 			hdr.lumps[LUMP_SURFEDGES].len);
-	q2bsp_lighting(f.f_ptr + hdr.lumps[LUMP_LIGHTING].ofs,
+	q2bsp_lighting(map, f.f_ptr + hdr.lumps[LUMP_LIGHTING].ofs,
 			hdr.lumps[LUMP_LIGHTING].len);
-	q2bsp_planes(f.f_ptr + hdr.lumps[LUMP_PLANES].ofs,
+	q2bsp_planes(map, f.f_ptr + hdr.lumps[LUMP_PLANES].ofs,
 			hdr.lumps[LUMP_PLANES].len);
-	q2bsp_texinfo(f.f_ptr + hdr.lumps[LUMP_TEXINFO].ofs,
+	q2bsp_texinfo(map, f.f_ptr + hdr.lumps[LUMP_TEXINFO].ofs,
 			hdr.lumps[LUMP_TEXINFO].len);
-	q2bsp_faces(f.f_ptr + hdr.lumps[LUMP_FACES].ofs,
+	q2bsp_faces(map, f.f_ptr + hdr.lumps[LUMP_FACES].ofs,
 			hdr.lumps[LUMP_FACES].len);
-	q2bsp_marksurfaces(f.f_ptr + hdr.lumps[LUMP_LEAFFACES].ofs,
+	q2bsp_marksurfaces(map, f.f_ptr + hdr.lumps[LUMP_LEAFFACES].ofs,
 			hdr.lumps[LUMP_LEAFFACES].len);
-	q2bsp_visibility(f.f_ptr + hdr.lumps[LUMP_VISIBILITY].ofs,
+	q2bsp_visibility(map, f.f_ptr + hdr.lumps[LUMP_VISIBILITY].ofs,
 			hdr.lumps[LUMP_VISIBILITY].len);
-	q2bsp_leafs(f.f_ptr + hdr.lumps[LUMP_LEAFS].ofs,
+	q2bsp_leafs(map, f.f_ptr + hdr.lumps[LUMP_LEAFS].ofs,
 			hdr.lumps[LUMP_LEAFS].len);
-	q2bsp_nodes(f.f_ptr + hdr.lumps[LUMP_NODES].ofs,
+	q2bsp_nodes(map, f.f_ptr + hdr.lumps[LUMP_NODES].ofs,
 			hdr.lumps[LUMP_NODES].len);
-	q2bsp_submodels(f.f_ptr + hdr.lumps[LUMP_MODELS].ofs,
+	q2bsp_submodels(map, f.f_ptr + hdr.lumps[LUMP_MODELS].ofs,
 			hdr.lumps[LUMP_MODELS].len);
 
 	con_printf("bsp: %s loaded OK\n", name);
-	return 1;
+	return map;
 
 err_close:
 	game_close(&f);
 err:
-	return 0;
+	return NULL;
 }
 
-static void q2bsp_surfrender(struct bsp_msurface *s)
+static void q2bsp_surfrender(struct _q2bsp *map, struct bsp_msurface *s)
 {
 	int i;
 	float *v;
@@ -861,7 +866,7 @@ static void q2bsp_surfrender(struct bsp_msurface *s)
 	/* Draw lightmap */
 #if 1
 	if ( lm ) {
-		glBindTexture(GL_TEXTURE_2D, lm_textures + lmtex);
+		glBindTexture(GL_TEXTURE_2D, map->lm_textures + lmtex);
 		glBegin(GL_POLYGON);
 		v = p->verts[0];
 		for(i = 0; i < p->numverts; i++, v += VERTEXSIZE) {
@@ -896,7 +901,8 @@ static int cull_box(vector_t mins, vector_t maxs)
 	return 0;
 }
 
-static void q2bsp_recurse(struct bsp_mnode *n, vector_t org, int visframe)
+static void q2bsp_recurse(struct _q2bsp *map, struct bsp_mnode *n,
+				vector_t org, int visframe)
 {
 	struct bsp_mplane *plane;
 	struct bsp_msurface *surf;
@@ -959,57 +965,58 @@ static void q2bsp_recurse(struct bsp_mnode *n, vector_t org, int visframe)
 		sidebit = 0;
 	}
 
-	q2bsp_recurse(n->children[side], org, visframe);
+	q2bsp_recurse(map, n->children[side], org, visframe);
 
-	for(c=n->numsurfaces, surf=msurface + n->firstsurface; c; c--, surf++) {
+	for(c=n->numsurfaces, surf = map->msurface + n->firstsurface;
+			c; c--, surf++) {
 		if ( surf->visframe != visframe )
 			continue;
 
 		if ( (surf->flags & SURF_PLANEBACK) != sidebit )
 			continue;
 
-		q2bsp_surfrender(surf);
+		q2bsp_surfrender(map, surf);
 	}
 	
-	q2bsp_recurse(n->children[!side], org, visframe);
+	q2bsp_recurse(map, n->children[!side], org, visframe);
 }
 
-static void decompress_vis(int ofs)
+static void decompress_vis(struct _q2bsp *map, int ofs)
 {
 	unsigned int c, v;
 	unsigned int b;
 
-	memset(vis, 0, visofs->numclusters>>3);
+	memset(map->vis, 0, map->visofs->numclusters >> 3);
 
 	/* Mark all leaves to be rendered */
-	for(c = 0, v = ofs; c < visofs->numclusters; v++) {
-		if ( map_visibility[v] == 0 ) {
-			c += 8 * map_visibility[++v];
+	for(c = 0, v = ofs; c < map->visofs->numclusters; v++) {
+		if ( map->map_visibility[v] == 0 ) {
+			c += 8 * map->map_visibility[++v];
 		}else{
 			for(b = 1; b & 0xff; b <<= 1, c++) {
-				if ( (map_visibility[v] & b) == 0 )
+				if ( (map->map_visibility[v] & b) == 0 )
 					continue;
 
-				vis[c >> 3] |= (1 << (c & 7));
+				map->vis[c >> 3] |= (1 << (c & 7));
 			}
 		}
 	}
 }
 
-static void mark_leafs(int newc, int visframe)
+static void mark_leafs(struct _q2bsp *map, int newc, int visframe)
 {
 	struct bsp_mleaf *leaf;
 	struct bsp_mnode *node;
 	int i, marked=0;
 	int cluster;
 
-	for(i=0, leaf=mleaf; i<numleafs; i++, leaf++) {
+	for(i=0, leaf = map->mleaf; i < map->numleafs; i++, leaf++) {
 		cluster = leaf->cluster;
 
 		if ( cluster == -1 )
 			continue;
 
-		if ( vis[cluster>>3] & (1<<(cluster&7)) ) {
+		if ( map->vis[cluster >> 3] & (1 << (cluster & 7)) ) {
 			node = (struct bsp_mnode *)leaf;
 			do {
 				if ( node->visframe == visframe )
@@ -1022,20 +1029,20 @@ static void mark_leafs(int newc, int visframe)
 	}
 }
 
-static void mark_all(int visframe)
+static void mark_all(struct _q2bsp *map, int visframe)
 {
 	int i;
 
-	for(i=0; i<numleafs; i++)
-		mleaf[i].visframe = visframe;
-	for(i=0; i<numnodes; i++)
-		mnode[i].visframe = visframe;
+	for(i=0; i < map->numleafs; i++)
+		map->mleaf[i].visframe = visframe;
+	for(i=0; i < map->numnodes; i++)
+		map->mnode[i].visframe = visframe;
 }
 
 
-void q2bsp_render(void)
+void q2bsp_render(q2bsp_t map)
 {
-	struct bsp_mnode *node = mnode;
+	struct bsp_mnode *node = map->mnode;
 	struct bsp_mplane *plane;
 	static int oldc=-1, newc=-1;
 	static int visframe=0;
@@ -1071,11 +1078,12 @@ void q2bsp_render(void)
 		visframe++;
 
 		if ( newc == -1 ) {
-			mark_all(visframe);
+			mark_all(map, visframe);
 		}else{
-			decompress_vis(visofs->bitofs[newc][DVIS_PVS]);
-			vis[newc>>3] |= (1<<(newc&7));
-			mark_leafs(newc, visframe);
+			decompress_vis(map,
+					map->visofs->bitofs[newc][DVIS_PVS]);
+			map->vis[newc >> 3] |= (1 << (newc & 7));
+			mark_leafs(map, newc, visframe);
 		}
 	}
 
@@ -1084,12 +1092,13 @@ void q2bsp_render(void)
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 	glDisable(GL_BLEND);
-	q2bsp_recurse(mnode, org, visframe);
+	q2bsp_recurse(map, map->mnode, org, visframe);
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 }
 
-static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int stride)
+static void R_BuildLightMap(struct _q2bsp *map, struct bsp_msurface *surf,
+				unsigned char *dest, int stride)
 {
 	unsigned int smax, tmax;
 	unsigned int r, g, b, a, max;
@@ -1108,8 +1117,8 @@ static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int 
 	smax = (surf->extents[0] >> 4) + 1;
 	tmax = (surf->extents[1] >> 4) + 1;
 	size = smax * tmax;
-	if (size > (sizeof(s_blocklights) >> 4) ) {
-		con_printf("Bad s_blocklights size\n");
+	if (size > (sizeof(map->s_blocklights) >> 4) ) {
+		con_printf("Bad map->s_blocklights size\n");
 		return;
 	}
 
@@ -1117,7 +1126,7 @@ static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int 
 	if (!surf->samples)
 	{
 		for (i=0 ; i<size*3 ; i++)
-			s_blocklights[i] = 255;
+			map->s_blocklights[i] = 255;
 		goto store;
 	}
 
@@ -1136,7 +1145,7 @@ static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int 
 		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
 			 maps++)
 		{
-			bl = s_blocklights;
+			bl = map->s_blocklights;
 
 			for (i=0 ; i<3 ; i++)
 				scale[i] = 1;
@@ -1168,12 +1177,12 @@ static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int 
 	{
 		int maps;
 
-		memset( s_blocklights, 0, sizeof( s_blocklights[0] ) * size * 3 );
+		memset( map->s_blocklights, 0, sizeof( map->s_blocklights[0] ) * size * 3 );
 
 		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
 			 maps++)
 		{
-			bl = s_blocklights;
+			bl = map->s_blocklights;
 
 			for (i=0 ; i<3 ; i++)
 				scale[i] = 1;
@@ -1205,7 +1214,7 @@ static void R_BuildLightMap(struct bsp_msurface *surf, unsigned char *dest, int 
 // put into texture format
 store:
 	stride -= (smax<<2);
-	bl = s_blocklights;
+	bl = map->s_blocklights;
 
 	for (i=0 ; i<tmax ; i++, dest += stride)
 	{
