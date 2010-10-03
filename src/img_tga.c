@@ -161,7 +161,8 @@ static int prep_rle(struct _texture *tex, unsigned int mip)
 		}
 	}
 
-	con_printf("tga: uncompressed %ubpp\n", stride * 8);
+	con_printf("tga: %s: uncompressed %ubpp\n",
+			tga->tex.t_name, stride * 8);
 	tga->tex.t_mipmap[0].m_pixels = buf;
 	tga->tex.t_mipmap[0].m_height = tga->height;
 	tga->tex.t_mipmap[0].m_width = tga->width;
@@ -232,9 +233,9 @@ static struct _texture *do_tga_load(const char *name)
 	if ( tga->width == 0 || tga->height == 0 )
 		goto err;
 
-	con_printf("tga: %s (%ux%u %ubpp)\n",
-			tga->tex.t_name, tga->width, tga->height,
-			hdr.tga_bpp);
+	//con_printf("tga: %s (%ux%u %ubpp)\n",
+	//		tga->tex.t_name, tga->width, tga->height,
+	//		hdr.tga_bpp);
 
 	list_add_tail(&tga->list, &tga_list);
 
