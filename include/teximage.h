@@ -31,6 +31,7 @@ struct image {
 
 int img_upload_generic(struct image *img, GLint format);
 int img_upload_rgb(struct image *img);
+int img_upload_bgr(struct image *img);
 int img_upload_rgba(struct image *img);
 int img_upload_rgb2rgba(struct image *img);
 void img_free_unload(struct image *img);

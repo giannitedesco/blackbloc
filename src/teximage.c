@@ -95,8 +95,6 @@ void img_free_unload(struct image *img)
 /* Upload the texture to the graphics chip */
 int img_upload_generic(struct image *img, GLint format)
 {
-	int i;
-
 	glBindTexture(GL_TEXTURE_2D, img->texnum);
 
 	glTexParameterf(GL_TEXTURE_2D,
@@ -104,15 +102,14 @@ int img_upload_generic(struct image *img, GLint format)
 	glTexParameterf(GL_TEXTURE_2D,
 		GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	for(i=0; i<MIPLEVELS; i++) {
-		glTexImage2D(GL_TEXTURE_2D, i, format,
-			img->mipmap[i].width,
-			img->mipmap[i].height,
-			0, format, GL_UNSIGNED_BYTE,
-			img->mipmap[i].pixels);
-	}
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+		img->mipmap[0].width,
+		img->mipmap[0].height,
+		0, format, GL_UNSIGNED_BYTE,
+		img->mipmap[0].pixels);
 
-	img->unload(img);
+	if ( img->unload )
+		img->unload(img);
 
 	return 1;
 }
@@ -141,7 +138,8 @@ int img_upload_rgb2rgba(struct image *i)
 				buf, w, h);
 
 		/* Free old image */
-		i->unload(i);
+		if ( i->unload )
+			i->unload(i);
 		i->unload = img_free_unload;
 
 		/* Overwrite with scaled image */
@@ -161,4 +159,9 @@ int img_upload_rgba(struct image *i)
 int img_upload_rgb(struct image *i)
 {
 	return img_upload_generic(i, GL_RGB);
+}
+
+int img_upload_bgr(struct image *i)
+{
+	return img_upload_generic(i, GL_BGR);
 }

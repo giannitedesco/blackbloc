@@ -11,7 +11,7 @@
 #include <gl_render.h>
 #include <img_pcx.h>
 
-struct image *pcxs;
+static struct image *pcxs;
 
 /* Convert in to a full RGBA texture before uploading */
 static int pcx_upload(struct image *i)
@@ -61,8 +61,7 @@ static int pcx_upload(struct image *i)
 		}
 	}
 
-	img_upload_rgb2rgba(i);
-	return 1;
+	return img_upload_rgb2rgba(i);
 }
 
 static int do_pcx_load(const char *name, uint8_t *map)

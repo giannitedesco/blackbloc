@@ -17,17 +17,23 @@ blackbloc_SOURCES = \
 	sdl_mouse.c \
 	sdl_keyb.c \
 	teximage.c \
-	md5anim.c \
-	md5mesh.c \
+	hud.c \
+	\
 	cl_main.c \
 	cl_move.c \
-	img_pcx.c \
-	img_png.c \
-	vector.c \
 	cl_cmd.c \
-	q2bsp.c \
+	\
+	img_pcx.c \
+	img_tga.c \
+	img_png.c \
 	q2wal.c \
+	\
+	md2.c \
+	md5anim.c \
+	md5mesh.c \
+	\
+	q2bsp.c \
+	\
+	vector.c \
 	gfile.c \
-	main.c \
-	hud.c \
-	md2.c
+	main.c
