@@ -6,11 +6,11 @@
 
 #include <stdlib.h>
 #include <SDL.h>
-#include <blackbloc.h>
-#include <sdl_keyb.h>
-#include <sdl_mouse.h>
-#include <gl_render.h>
-#include <client.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/sdl_keyb.h>
+#include <blackbloc/sdl_mouse.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/client.h>
 
 float fps = 30;
 double lerp = 0;

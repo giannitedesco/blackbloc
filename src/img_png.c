@@ -12,11 +12,11 @@
 */
 #include <png.h>
 
-#include <blackbloc.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <gl_render.h>
-#include <img_png.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/img/png.h>
 
 static struct image *pngs;
 struct png_io_ffs {

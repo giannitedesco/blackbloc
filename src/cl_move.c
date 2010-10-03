@@ -5,8 +5,8 @@
 */
 
 #include <SDL.h>
-#include <blackbloc.h>
-#include <client.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
 
 static int mf, mb, ml, mr, mu, md;
 

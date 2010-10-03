@@ -5,12 +5,12 @@
 *
 * QuakeII MD2 model loader.
 */
-#include <blackbloc.h>
-#include <client.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <img_pcx.h>
-#include <md2.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/img/pcx.h>
+#include <blackbloc/model/md2.h>
 
 struct model_ops md2_ops={
 	.type_name = "md2",

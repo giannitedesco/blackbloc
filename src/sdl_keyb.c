@@ -5,9 +5,9 @@
 */
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <client.h>
-#include <sdl_keyb.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
+#include <blackbloc/sdl_keyb.h>
 
 /* ===== Key Binding Code ===== */
 static struct cl_bind binds[KEY_MAX];

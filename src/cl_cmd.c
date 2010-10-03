@@ -5,11 +5,11 @@
 */
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <gl_render.h>
-#include <client.h>
-#include <hud.h>
-#include <sdl_keyb.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/client.h>
+#include <blackbloc/hud.h>
+#include <blackbloc/sdl_keyb.h>
 
 void cl_cmd_run(char *cmd)
 {

@@ -6,10 +6,10 @@
 #include <unistd.h>
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <client.h>
-#include <hud.h>
-#include <gl_render.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
+#include <blackbloc/hud.h>
+#include <blackbloc/gl_render.h>
 
 static unsigned int vid_x;
 static unsigned int vid_y;

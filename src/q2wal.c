@@ -8,12 +8,12 @@
 */
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <gl_render.h>
-#include <q2wal.h>
-#include <img_pcx.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/img/q2wal.h>
+#include <blackbloc/img/pcx.h>
 
 static struct image *wals;
 static uint8_t palette[PCX_PAL];

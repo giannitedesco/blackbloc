@@ -1,8 +1,5 @@
 ## Process this file with automake to produce Makefile.in
 
-INCLUDES = \
-	-I../include
-
 bin_PROGRAMS = blackbloc mkgfile
 
 mkgfile_SOURCES = \

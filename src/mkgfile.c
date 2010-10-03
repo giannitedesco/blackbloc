@@ -3,11 +3,11 @@
 * Copyright (c) 2008 Gianni Tedesco
 * Released under the terms of the GNU GPL version 2
 */
-#include <blackbloc.h>
-#include <gang.h>
-#include <mpool.h>
-#include <gfile.h>
-#include <gfile-internal.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gang.h>
+#include <blackbloc/mpool.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/gfile-internal.h>
 
 #include <stdio.h>
 #include <sys/stat.h>

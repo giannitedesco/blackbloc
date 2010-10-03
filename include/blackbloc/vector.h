@@ -86,13 +86,13 @@ typedef float vec5_t[5];
  * should be fixed in gcc 4??
  */
 #if __GNUC__ >= 4
-#include <vector_altivec.h>
+#include <blackbloc/vector_altivec.h>
 #endif
 #endif
 
 /* Include in the software implementations for all 
  * non-optimised functions */
-#include <vector_sw.h>
+#include <blackbloc/vector_sw.h>
 
 /* func: OpenGL render
  * desc: Renders a vertex

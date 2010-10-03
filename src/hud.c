@@ -14,15 +14,15 @@
 #include <ctype.h>
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <gl_render.h>
-#include <client.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <sdl_keyb.h>
-#include <img_pcx.h>
-#include <img_png.h>
-#include <hud.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/client.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/sdl_keyb.h>
+#include <blackbloc/img/pcx.h>
+#include <blackbloc/img/png.h>
+#include <blackbloc/hud.h>
 
 #define HUD_CHAR 16
 #define CON_CHAR 8

@@ -4,8 +4,8 @@
 * Released under the terms of the GNU GPL version 2
 */
 
-#include <blackbloc.h>
-#include <mpool.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/mpool.h>
 
 /** Initialise an mpool.
  * \ingroup g_mpool

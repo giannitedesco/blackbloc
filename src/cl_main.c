@@ -6,15 +6,14 @@
 #include <unistd.h>
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <client.h>
-#include <gl_render.h>
-#include <sdl_keyb.h>
-#include <hud.h>
-#include <gfile.h>
-#include <md2.h>
-#include <q2bsp.h>
-#include <md5model.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/sdl_keyb.h>
+#include <blackbloc/hud.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/model/md2.h>
+#include <blackbloc/model/md5.h>
 
 frame_t client_frame;
 int cl_alive = 1;

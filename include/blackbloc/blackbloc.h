@@ -12,7 +12,7 @@
 #include <config.h>
 #endif
 
-#include <compiler.h>
+#include <blackbloc/compiler.h>
 
 #if HAVE_STDINT_H
 #include <stdint.h>
@@ -35,11 +35,11 @@
 #endif
 
 /* TODO: deprecate */
-#include <bytesex.h>
+#include <blackbloc/bytesex.h>
 
-#include <list.h>
-#include <vector.h>
-#include <gfile.h>
+#include <blackbloc/list.h>
+#include <blackbloc/vector.h>
+#include <blackbloc/gfile.h>
 
 /* Animation frame */
 typedef uint16_t aframe_t;

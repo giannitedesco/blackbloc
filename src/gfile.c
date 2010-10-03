@@ -3,9 +3,9 @@
 * Copyright (c) 2008 Gianni Tedesco
 * Released under the terms of the GNU GPL version 2
 */
-#include <blackbloc.h>
-#include <gfile.h>
-#include <gfile-internal.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/gfile-internal.h>
 
 #include <sys/stat.h>
 #include <sys/mman.h>

@@ -30,15 +30,14 @@
  * gcc -Wall -ansi -lGL -lGLU -lglut md5anim.c md5anim.c -o md5model
  */
 
-#include <blackbloc.h>
-#include <vector.h>
-#include <client.h>
-#include <img_tga.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/vector.h>
+#include <blackbloc/client.h>
+#include <blackbloc/img/tga.h>
+#include <blackbloc/model/md5.h>
+
 #include <math.h>
-
 #include <stdio.h>
-
-#include "md5model.h"
 
 static struct md5_model_t md5file;
 static struct md5_anim_t md5anim;

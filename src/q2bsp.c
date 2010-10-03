@@ -14,14 +14,15 @@
 *  o Load portals
 *  o Lots of tidying up and bugfixes
 */
-#include <blackbloc.h>
 #include <stdio.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <q2wal.h>
-#include <img_tga.h>
-#include <q2bsp.h>
-#include <client.h>
+
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/img/q2wal.h>
+#include <blackbloc/img/tga.h>
+#include <blackbloc/client.h>
+#include "q2bsp.h"
 
 static struct bsp_mtexinfo *mtex;
 static struct bsp_vertex *mvert;

@@ -30,14 +30,14 @@
  * gcc -Wall -ansi -lGL -lGLU -lglut md5anim.c md5anim.c -o md5model
  */
 
-#include <blackbloc.h>
-#include <vector.h>
-#include <client.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/vector.h>
+#include <blackbloc/client.h>
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
 
-#include "md5model.h"
+#include <blackbloc/model/md5.h>
 
 /* Joint info */
 struct joint_info_t {

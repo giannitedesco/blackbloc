@@ -5,10 +5,10 @@
 *
 * QuakeII MD2 model loader.
 */
-#include <blackbloc.h>
-#include <client.h>
-#include <gfile.h>
-#include <md2.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/model/md2.h>
 
 struct model_ops md2_sv_ops={
 	.load = md2_load,

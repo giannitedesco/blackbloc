@@ -5,9 +5,9 @@
 *
 * Texture handling routines.
 */
-#include <blackbloc.h>
-#include <gfile.h>
-#include <teximage.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
 
 /* XXX: tidy up, try hyper filtering */
 static void img_resample(uint8_t *p_in, int inwidth, int inheight,

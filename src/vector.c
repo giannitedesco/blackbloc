@@ -8,8 +8,8 @@
 * them. Kinda sucks that we use GCC extensions but fuck it, GCC is
 * king.
 */
-#include <compiler.h>
-#include <vector.h>
+#include <blackbloc/compiler.h>
+#include <blackbloc/vector.h>
 
 void v_angles(vector_t angles, vector_t forward, vector_t up, vector_t right)
 {

@@ -5,11 +5,11 @@
 *
 * Load PCX image files. PCX images are palettized RLE images.
 */
-#include <blackbloc.h>
-#include <gfile.h>
-#include <teximage.h>
-#include <gl_render.h>
-#include <img_tga.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gfile.h>
+#include <blackbloc/teximage.h>
+#include <blackbloc/gl_render.h>
+#include <blackbloc/img/tga.h>
 
 static struct image *tgas;
 

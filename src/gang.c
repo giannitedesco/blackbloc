@@ -4,8 +4,8 @@
 * Released under the terms of the GNU GPL version 2
 */
 
-#include <blackbloc.h>
-#include <gang.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/gang.h>
 
 /** Initialize a gang allocator.
  * \ingroup g_gang

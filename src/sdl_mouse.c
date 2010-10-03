@@ -5,9 +5,9 @@
 */
 #include <SDL.h>
 
-#include <blackbloc.h>
-#include <sdl_mouse.h>
-#include <client.h>
+#include <blackbloc/blackbloc.h>
+#include <blackbloc/sdl_mouse.h>
+#include <blackbloc/client.h>
 
 void sdl_mouse_event(SDL_Event *e)
 {

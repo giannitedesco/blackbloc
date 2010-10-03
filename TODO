@@ -20,10 +20,10 @@ Infrastructure
 Models
 ------
  x Hook up animation code
+ x Texture support
  o Allow multiple models
  o Attach heads + weapons
- o Texture support
- o Calculate normals (in tangent space?)
+ o Calculate normals (in tangent space)
  o Normal mapping
 
 World
