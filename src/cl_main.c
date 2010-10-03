@@ -71,15 +71,14 @@ int cl_init(void)
 
 	q2bsp_load("maps/q2dm1.bsp");
 
-	md5_load("data/d3/demo/models/md5/monsters/zombies/jumpsuitzombie.md5mesh",
-		"data/d3/demo/models/md5/monsters/zombies/zombie_idle2.md5anim");
-		//"d3/demo/models/md5/monsters/zombies/zwalk1.md5anim");
+	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
+		"data/d3/demo/models/md5/chars/marscity/marscity_marine1_idle1.md5anim");
 	return 1;
 }
 
 void cl_render(void)
 {
-	//q2bsp_render();
+	q2bsp_render();
 	md5_render();
 	//cl_model_render(&ent);
 }

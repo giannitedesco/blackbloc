@@ -10,8 +10,9 @@
 #include <teximage.h>
 
 /* XXX: tidy up, try hyper filtering */
-static void img_resample_rgba(uint8_t *p_in, int inwidth, int inheight,
-			uint8_t *p_out, int outwidth, int outheight)
+static void img_resample(uint8_t *p_in, int inwidth, int inheight,
+			uint8_t *p_out, int outwidth, int outheight,
+			GLint format)
 {
 	int i, j;
 	unsigned *inrow, *inrow2;
@@ -55,8 +56,9 @@ static void img_resample_rgba(uint8_t *p_in, int inwidth, int inheight,
 			((uint8_t *)(out+j))[3] = (pix1[3] + pix2[3] + pix3[3] + pix4[3])>>2;
 		}
 	}
-	con_printf("resampled: %ux%u RGB -> %ux%u RGBA\n",
-			inwidth, inheight, outwidth, outheight);
+	con_printf("resampled: %ux%u RGB -> %ux%u %s\n",
+			inwidth, inheight, outwidth, outheight,
+			(format == GL_RGBA) ? "RGBA" : "BGRA");
 }
 
 void img_get(struct image *i)
@@ -95,6 +97,7 @@ void img_free_unload(struct image *img)
 /* Upload the texture to the graphics chip */
 int img_upload_generic(struct image *img, GLint format)
 {
+	int i = 0;
 	glBindTexture(GL_TEXTURE_2D, img->texnum);
 
 	glTexParameterf(GL_TEXTURE_2D,
@@ -102,11 +105,13 @@ int img_upload_generic(struct image *img, GLint format)
 	glTexParameterf(GL_TEXTURE_2D,
 		GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-		img->mipmap[0].width,
-		img->mipmap[0].height,
-		0, format, GL_UNSIGNED_BYTE,
-		img->mipmap[0].pixels);
+	for(i = 0; i < 1; i++ ) { 
+		glTexImage2D(GL_TEXTURE_2D, i, GL_RGBA,
+			img->mipmap[0].width,
+			img->mipmap[0].height,
+			0, format, GL_UNSIGNED_BYTE,
+			img->mipmap[0].pixels);
+	}
 
 	if ( img->unload )
 		img->unload(img);
@@ -114,10 +119,12 @@ int img_upload_generic(struct image *img, GLint format)
 	return 1;
 }
 
-int img_upload_rgb2rgba(struct image *i)
+int img_upload_resample(struct image *i, GLint format)
 {
 	uint32_t w, h;
 	uint8_t *buf;
+
+	assert(format == GL_RGBA || format == GL_BGRA);
 
 	/* Round to powers of 2 (for OpenGL) */
 	for(w=1; w < i->mipmap[0].width; w<<=1);
@@ -132,10 +139,10 @@ int img_upload_rgb2rgba(struct image *i)
 		}
 
 		/* Actually resample the image */
-		img_resample_rgba(i->mipmap[0].pixels,
+		img_resample(i->mipmap[0].pixels,
 				i->mipmap[0].width,
 				i->mipmap[0].height,
-				buf, w, h);
+				buf, w, h, format);
 
 		/* Free old image */
 		if ( i->unload )
@@ -148,7 +155,7 @@ int img_upload_rgb2rgba(struct image *i)
 		i->mipmap[0].pixels = buf;
 	}
 
-	return img_upload_generic(i, GL_RGBA);
+	return img_upload_generic(i, format);
 }
 
 int img_upload_rgba(struct image *i)
@@ -164,4 +171,9 @@ int img_upload_rgb(struct image *i)
 int img_upload_bgr(struct image *i)
 {
 	return img_upload_generic(i, GL_BGR);
+}
+
+int img_upload_bgra(struct image *i)
+{
+	return img_upload_generic(i, GL_BGRA);
 }

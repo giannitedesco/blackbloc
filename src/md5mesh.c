@@ -506,7 +506,7 @@ void md5_render(void)
 	static unsigned int last_frame = 0;
 	struct teximage *skin;
 
-	skin = tga_get_by_name("d3/demo/models/characters/male_npc/jumpsuit/jumpsuit.tga");
+	skin = tga_get_by_name("d3/demo/models/characters/male_npc/marine/marine.tga");
 	if (animated) {
 		/* Calculate current and next frames */
 		if ( client_frame > last_frame )
@@ -523,20 +523,12 @@ void md5_render(void)
 		skeleton = md5file.baseSkel;
 	}
 
-#if 0
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDisable(GL_TEXTURE_2D);
-	glDisable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-#endif
-
 	/* Draw skeleton */
 	glRotatef(90.0, -1.0, 0.0, 0.0);
-	//DrawSkeleton(skeleton, md5file.num_joints);
 
 	glCullFace(GL_FRONT);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	img_bind(skin);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -556,9 +548,12 @@ void md5_render(void)
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 #if 0
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDisable(GL_TEXTURE_2D);
+	glDisable(GL_CULL_FACE);
+	DrawSkeleton(skeleton, md5file.num_joints);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_TEXTURE_2D);
-	glDisable(GL_DEPTH_TEST);
 #endif
 	glCullFace(GL_BACK);
 	glRotatef(-90.0, -1.0, 0.0, 0.0);

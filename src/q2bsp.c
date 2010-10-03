@@ -15,9 +15,11 @@
 *  o Lots of tidying up and bugfixes
 */
 #include <blackbloc.h>
+#include <stdio.h>
 #include <gfile.h>
 #include <teximage.h>
 #include <q2wal.h>
+#include <img_tga.h>
 #include <q2bsp.h>
 #include <client.h>
 
@@ -696,6 +698,20 @@ static int q2bsp_vertexes(const void *data, int len)
 	return 1;
 }
 
+static struct image *get_texture(const char *name)
+{
+	struct image *ret;
+	size_t len = strlen(name);
+	char fn[9 + len + 5];
+
+	snprintf(fn, sizeof(fn), "textures/%s.tga", name);
+	ret = tga_get_by_name(fn);
+	if ( ret )
+		return ret;
+
+	return q2wal_get(name);
+}
+
 static int q2bsp_texinfo(const void *data, uint32_t len)
 {
 	const struct bsp_texinfo *in;
@@ -739,7 +755,7 @@ static int q2bsp_texinfo(const void *data, uint32_t len)
 		else
 			out->next = NULL;
 
-		out->image = q2wal_get(in->texture);
+		out->image = get_texture(in->texture);
 		if ( !out->image ) {
 			con_printf("q2bsp: texture %s not found\n",
 				in->texture);

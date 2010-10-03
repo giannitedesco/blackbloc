@@ -19,7 +19,7 @@ struct image {
 
 	/* source image */
 	struct gfile f;
-	uint32_t s_width, s_height;
+	unsigned int s_width, s_height;
 	const uint8_t *s_pixels;
 
 	/* Final scaled image */
@@ -32,8 +32,9 @@ struct image {
 int img_upload_generic(struct image *img, GLint format);
 int img_upload_rgb(struct image *img);
 int img_upload_bgr(struct image *img);
+int img_upload_bgra(struct image *img);
 int img_upload_rgba(struct image *img);
-int img_upload_rgb2rgba(struct image *img);
+int img_upload_resample(struct image *img, GLint format);
 void img_free_unload(struct image *img);
 void img_put(struct image *img);
 void img_get(struct image *img);

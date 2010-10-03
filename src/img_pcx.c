@@ -61,7 +61,7 @@ static int pcx_upload(struct image *i)
 		}
 	}
 
-	return img_upload_rgb2rgba(i);
+	return img_upload_resample(i, GL_RGBA);
 }
 
 static int do_pcx_load(const char *name, uint8_t *map)
