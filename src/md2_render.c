@@ -125,11 +125,6 @@ void md2_render(struct cl_ent *ent)
 		v_sub(s_lerped[i], s_lerped[i], v);
 	}
 
-	/* For dynamic lighting */
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	glEnable(GL_DEPTH_TEST);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
-
 	md2_bbox(org, rot, ent->s.mins, ent->s.maxs);
 
 	glTranslatef(org[X], org[Y], org[Z]);
@@ -141,7 +136,8 @@ void md2_render(struct cl_ent *ent)
 	glCullFace(GL_FRONT);
 
 	img_bind(ent->skin);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	while(1) {
 		count = *order++;
@@ -167,5 +163,4 @@ void md2_render(struct cl_ent *ent)
 	}
 
 	glCullFace(GL_BACK);
-	glDisable(GL_DEPTH_TEST);
 }

@@ -50,6 +50,7 @@ static int max_verts;
 static int max_tris;
 
 static vec3_t *vertexArray;
+static vec2_t *texArray;
 static GLuint *vertexIndices;
 
 /**
@@ -397,12 +398,15 @@ PrepareMesh(const struct md5_mesh_t *mesh, const struct md5_joint_t *skeleton)
 		vertexArray[i][0] = finalVertex[0];
 		vertexArray[i][1] = finalVertex[1];
 		vertexArray[i][2] = finalVertex[2];
+		texArray[i][0] = mesh->vertices[i].st[0];
+		texArray[i][1] = 1.0f - mesh->vertices[i].st[1];
 	}
 }
 
 static void AllocVertexArrays(void)
 {
 	vertexArray = (vec3_t *) malloc(sizeof(vec3_t) * max_verts);
+	texArray = malloc(sizeof(vec2_t) * max_verts);
 	vertexIndices = (GLuint *) malloc(sizeof(GLuint) * max_tris * 3);
 }
 
@@ -500,7 +504,9 @@ void md5_render(void)
 {
 	int i;
 	static unsigned int last_frame = 0;
+	struct teximage *skin;
 
+	skin = tga_get_by_name("d3/demo/models/characters/male_npc/jumpsuit/jumpsuit.tga");
 	if (animated) {
 		/* Calculate current and next frames */
 		if ( client_frame > last_frame )
@@ -517,31 +523,43 @@ void md5_render(void)
 		skeleton = md5file.baseSkel;
 	}
 
-	/* Draw skeleton */
-	glRotatef(90.0, -1.0, 0.0, 0.0);
-	DrawSkeleton(skeleton, md5file.num_joints);
-
-	glColor3f(1.0f, 1.0f, 1.0f);
+#if 0
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDisable(GL_TEXTURE_2D);
 	glDisable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+#endif
+
+	/* Draw skeleton */
+	glRotatef(90.0, -1.0, 0.0, 0.0);
+	//DrawSkeleton(skeleton, md5file.num_joints);
+
+	glCullFace(GL_FRONT);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	img_bind(skin);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	/* Draw each mesh of the model */
 	for (i = 0; i < md5file.num_meshes; ++i) {
 		PrepareMesh(&md5file.meshes[i], skeleton);
 
 		glVertexPointer(3, GL_FLOAT, 0, vertexArray);
+		glTexCoordPointer(2, GL_FLOAT, 0, texArray);
 
 		glDrawElements(GL_TRIANGLES, md5file.meshes[i].num_tris * 3,
 			       GL_UNSIGNED_INT, vertexIndices);
 	}
 
 	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+#if 0
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_TEXTURE_2D);
 	glDisable(GL_DEPTH_TEST);
+#endif
+	glCullFace(GL_BACK);
 	glRotatef(-90.0, -1.0, 0.0, 0.0);
 }
