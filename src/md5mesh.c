@@ -31,9 +31,12 @@
  */
 
 #include <blackbloc.h>
+#include <vector.h>
 #include <client.h>
-#include <stdio.h>
+#include <img_tga.h>
 #include <math.h>
+
+#include <stdio.h>
 
 #include "md5model.h"
 
@@ -470,7 +473,7 @@ void md5_load(const char *filename, const char *animfile)
 			animInfo.next_frame = 1;
 
 			animInfo.last_time = 0;
-			animInfo.max_time = 1.0 / md5anim.frameRate;
+			animInfo.max_time = md5anim.frameRate / 10.0 /* HZ */;
 
 			/* Allocate memory for animated skeleton */
 			skeleton = (struct md5_joint_t *)
@@ -500,6 +503,33 @@ void cleanup(void)
 }
 #endif
 
+/**
+ * Perform animation related computations.  Calculate the current and
+ * next frames, given a delta time.
+ */
+static void Animate(const struct md5_anim_t *anim, struct anim_info_t *animInfo)
+{
+	double dt;
+	int maxFrames = anim->num_frames - 1;
+
+	dt = client_frame - animInfo->last_time;
+	dt += lerp;
+
+	dt *= animInfo->max_time;
+
+	/* move to next frame */
+	if ( animInfo->last_time != client_frame ) {
+		animInfo->curr_frame += dt;
+		animInfo->next_frame += dt;
+		animInfo->last_time = (double)client_frame + lerp;
+
+		if (animInfo->curr_frame > maxFrames)
+			animInfo->curr_frame = 0;
+
+		if (animInfo->next_frame > maxFrames)
+			animInfo->next_frame = 0;
+	}
+}
 void md5_render(void)
 {
 	int i;
@@ -510,7 +540,7 @@ void md5_render(void)
 	if (animated) {
 		/* Calculate current and next frames */
 		if ( client_frame > last_frame )
-			Animate(&md5anim, &animInfo, lerp);
+			Animate(&md5anim, &animInfo);
 
 		/* Interpolate skeletons between two frames */
 		InterpolateSkeletons(md5anim.skelFrames[animInfo.curr_frame],

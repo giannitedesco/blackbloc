@@ -30,10 +30,6 @@
 #ifndef __MD5MODEL_H__
 #define __MD5MODEL_H__
 
-/* Vectors */
-typedef float vec2_t[2];
-typedef float vec3_t[3];
-
 /* Quaternion (x, y, z, w) */
 typedef float quat4_t[4];
 
@@ -145,8 +141,6 @@ void InterpolateSkeletons (const struct md5_joint_t *skelA,
 			   const struct md5_joint_t *skelB,
 			   int num_joints, float interp,
 			   struct md5_joint_t *out);
-void Animate (const struct md5_anim_t *anim,
-	      struct anim_info_t *animInfo, double dt);
 
 void md5_load(const char *filename, const char *animfile);
 void md5_render(void);

@@ -29,7 +29,7 @@ extern struct playerstate me;
 extern frame_t client_frame;
 extern int cl_alive;
 extern float fps;
-extern float lerp;
+extern double lerp;
 
 /* Main API entry points */
 int cl_init(void);

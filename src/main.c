@@ -13,7 +13,7 @@
 #include <client.h>
 
 float fps = 30;
-float lerp = 0;
+double lerp = 0;
 
 int main(int argc, char **argv)
 {

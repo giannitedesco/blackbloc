@@ -46,6 +46,11 @@ typedef float scalar_t;
 
 typedef float vector_t[4] _valign;
 
+typedef float vec2_t[2];
+typedef float vec3_t[3];
+typedef float vec4_t[4];
+typedef float vec5_t[5];
+
 /* W is a scale value but is mostly ignored, we use it to make
  * 4x4 matrices homogenous so that all affine transformations
  * are matrix multiplications. It is also here to make hardware

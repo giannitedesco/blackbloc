@@ -31,6 +31,7 @@
  */
 
 #include <blackbloc.h>
+#include <vector.h>
 #include <client.h>
 #include <stdio.h>
 #include <math.h>
@@ -454,30 +455,5 @@ InterpolateSkeletons(const struct md5_joint_t *skelA,
 		/* Spherical linear interpolation for orientation */
 		Quat_slerp(skelA[i].orient, skelB[i].orient, interp,
 			   out[i].orient);
-	}
-}
-
-/**
- * Perform animation related computations.  Calculate the current and
- * next frames, given a delta time.
- */
-void
-Animate(const struct md5_anim_t *anim, struct anim_info_t *animInfo, double dt)
-{
-	int maxFrames = anim->num_frames - 1;
-
-	animInfo->last_time = client_frame;
-
-	/* move to next frame */
-	if (animInfo->last_time >= animInfo->max_time) {
-		animInfo->curr_frame++;
-		animInfo->next_frame++;
-		animInfo->last_time = 0.0;
-
-		if (animInfo->curr_frame > maxFrames)
-			animInfo->curr_frame = 0;
-
-		if (animInfo->next_frame > maxFrames)
-			animInfo->next_frame = 0;
 	}
 }
