@@ -12,6 +12,8 @@
 #include <config.h>
 #endif
 
+#include <compiler.h>
+
 #if HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -28,8 +30,13 @@
 #include <assert.h>
 #endif
 
-#include <compiler.h>
+#if HAVE_ENDIAN_H
+#include <endian.h>
+#endif
+
+/* TODO: deprecate */
 #include <bytesex.h>
+
 #include <list.h>
 #include <vector.h>
 #include <gfile.h>
