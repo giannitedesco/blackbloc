@@ -8,7 +8,7 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/client.h>
 #include <blackbloc/gfile.h>
-#include <blackbloc/teximage.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/img/pcx.h>
 #include <blackbloc/model/md2.h>
 
@@ -135,7 +135,7 @@ void md2_render(struct cl_ent *ent)
 	/* Backwards winding order in glcmds */
 	glCullFace(GL_FRONT);
 
-	img_bind(ent->skin);
+	tex_bind(ent->skin);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 

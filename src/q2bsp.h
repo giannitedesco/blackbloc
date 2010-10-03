@@ -218,7 +218,7 @@ struct bsp_mtexinfo {
 	int flags;
 	int numframes;
 	struct bsp_mtexinfo *next;
-	struct image *image;
+	texture_t image;
 };
 
 struct bsp_medge {

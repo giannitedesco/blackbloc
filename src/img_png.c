@@ -14,20 +14,70 @@
 
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/gfile.h>
-#include <blackbloc/teximage.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/gl_render.h>
 #include <blackbloc/img/png.h>
 
-static struct image *pngs;
+#include "teximg.h"
+
+struct _png_img {
+	struct _texture tex;
+	struct gfile f;
+	png_uint_32 width, height;
+	uint8_t *pixels;
+	struct list_head list;
+};
+
+static LIST_HEAD(png_list);
+
 struct png_io_ffs {
 	struct gfile *file;
 	size_t fptr;
 };
 
-/* Replacement read function for libpng */
-static void png_read_data_fn(png_structp png, png_bytep data, png_size_t len)
+static unsigned int png_width(struct _texture *tex)
 {
-	struct png_io_ffs *ffs = png_get_io_ptr(png);
+	struct _png_img *png = (struct _png_img *)tex;
+	return png->width;
+}
+
+static unsigned int png_height(struct _texture *tex)
+{
+	struct _png_img *png = (struct _png_img *)tex;
+	return png->height;
+}
+
+static int prep(struct _texture *tex, unsigned int mip)
+{
+	struct _png_img *png = (struct _png_img *)tex;
+	if ( mip )
+		return 0;
+	png->tex.t_mipmap[0].m_pixels = (uint8_t *)png->pixels;
+	png->tex.t_mipmap[0].m_height = png->height;
+	png->tex.t_mipmap[0].m_width = png->width;
+	return 1;
+}
+
+static const struct _texops ops_rgb = {
+	.prep = prep,
+	.upload = teximg_upload_rgb,
+	.dtor = teximg_dtor_generic,
+	.width = png_width,
+	.height = png_height,
+};
+
+static const struct _texops ops_rgba = {
+	.prep = prep,
+	.upload = teximg_upload_rgba,
+	.dtor = teximg_dtor_generic,
+	.width = png_width,
+	.height = png_height,
+};
+
+/* Replacement read function for libpng */
+static void png_read_data_fn(png_structp pngstruct, png_bytep data, png_size_t len)
+{
+	struct png_io_ffs *ffs = png_get_io_ptr(pngstruct);
 
 	if ( ffs->fptr > ffs->file->f_len )
 		return;
@@ -37,10 +87,10 @@ static void png_read_data_fn(png_structp png, png_bytep data, png_size_t len)
 	ffs->fptr += len;
 }
 
-static int png_load(const char *name)
+static struct _texture *do_png_load(const char *name)
 {
-	struct image *i;
-	png_structp png;
+	struct _png_img *png;
+	png_structp pngstruct;
 	png_infop info = NULL;
 	int bits, color, inter;
 	png_uint_32 w, h;
@@ -48,32 +98,32 @@ static int png_load(const char *name)
 	unsigned int x, rb;
 	struct png_io_ffs ffs;
 
-	if ( !(png=png_create_read_struct(PNG_LIBPNG_VER_STRING,
+	if ( !(pngstruct=png_create_read_struct(PNG_LIBPNG_VER_STRING,
 						NULL, NULL, NULL)) ) {
 		goto err;
 	}
 
-	if ( !(info=png_create_info_struct(png)) )
+	if ( !(info=png_create_info_struct(pngstruct)) )
 		goto err_png;
 
-	if ( !(i=calloc(1, sizeof(*i))) )
+	if ( !(png=calloc(1, sizeof(*png))) )
 		goto err_png;
 
-	if ( !game_open(&i->f, name) )
+	if ( !game_open(&png->f, name) )
 		goto err_img;
 
-	if ( i->f.f_len < 8 || png_sig_cmp((void *)i->f.f_ptr, 0, 8) ) {
-		con_printf("png: %s: bad signature\n", name);
+	if ( png->f.f_len < 8 || png_sig_cmp((void *)png->f.f_ptr, 0, 8) ) {
+		con_printf("pngstruct: %s: bad signature\n", name);
 		goto err_close;
 	}
 
-	ffs.file = &i->f;
+	ffs.file = &png->f;
 	ffs.fptr = 0;
-	png_set_read_fn(png, &ffs, png_read_data_fn);
-	png_read_info(png, info);
+	png_set_read_fn(pngstruct, &ffs, png_read_data_fn);
+	png_read_info(pngstruct, info);
 
 	/* Get the information we need */
-	png_get_IHDR(png, info, &w, &h, &bits,
+	png_get_IHDR(pngstruct, info, &w, &h, &bits,
 			&color, &inter, NULL, NULL);
 
 	/* o Must be power of two in dimensions (for OpenGL)
@@ -85,66 +135,59 @@ static int png_load(const char *name)
 		inter != PNG_INTERLACE_NONE ||
 		(color != PNG_COLOR_TYPE_RGB &&
 		 color != PNG_COLOR_TYPE_RGB_ALPHA) ) {
-		con_printf("png: %s: bad format (%ux%ux%ibit) %i\n",
+		con_printf("pngstruct: %s: bad format (%ux%ux%ibit) %i\n",
 			name, w, h, bits, color);
 		goto err_close;
 	}
 
 	/* Allocate buffer and read image */
-	rb = png_get_rowbytes(png, info);
+	rb = png_get_rowbytes(pngstruct, info);
 	buf = malloc(h * rb);
-	for(x=0; x < h; x++) {
-		png_read_row(png, buf + (x*rb), NULL);
-	}
+	if ( NULL == buf )
+		goto err_close;
 
-	i->name = i->f.f_name;
-	i->mipmap[0].width = i->s_width = w;
-	i->mipmap[0].height = i->s_height = h;
-	i->s_pixels = i->mipmap[0].pixels = buf;
-	i->unload = img_free_unload;
+	for(x = 0; x < h; x++) 
+		png_read_row(pngstruct, buf + (x*rb), NULL);
+
+	png->tex.t_name = png->f.f_name;
+	png->height = h;
+	png->width = w;
+	png->pixels = buf;
 	if ( color == PNG_COLOR_TYPE_RGB_ALPHA )
-		i->upload = img_upload_rgba;
+		png->tex.t_ops = &ops_rgba;
 	if ( color == PNG_COLOR_TYPE_RGB )
-		i->upload = img_upload_rgb;
+		png->tex.t_ops = &ops_rgb;
 
-	png_read_end(png, info);
-	png_destroy_read_struct(&png, &info, NULL);
-	game_close(&i->f);
+	png_read_end(pngstruct, info);
+	png_destroy_read_struct(&pngstruct, &info, NULL);
+	game_close(&png->f);
 
-	i->next = pngs;
-	pngs = i;
+	list_add_tail(&png->list, &png_list);
 
-	return 1;
+	tex_get(&png->tex);
+	return &png->tex;
 
 err_close:
-	game_close(&i->f);
+	game_close(&png->f);
 err_img:
-	free(i);
+	free(png);
 err_png:
-	png_destroy_read_struct(&png, &info, NULL);
+	png_destroy_read_struct(&pngstruct, &info, NULL);
 err:
-	return 0;
+	return NULL;
 }
 
-struct image *png_get_by_name(char *n)
-{
-	struct image *ret;
-	int again=0;
 
-try_again:
-	for(ret=pngs; ret; ret=ret->next) {
-		if ( !strcmp(n, ret->name) ) {
-			img_get(ret);
-			return ret;
+texture_t png_get_by_name(const char *name)
+{
+	struct _png_img *png;
+
+	list_for_each_entry(png, &png_list, list) {
+		if ( !strcmp(name, png->tex.t_name) ) {
+			tex_get(&png->tex);
+			return &png->tex;
 		}
 	}
 
-	if ( again )
-		return NULL;
-
-	if ( !png_load(n) )
-		return NULL;
-
-	again=1;
-	goto try_again;
+	return do_png_load(name);
 }

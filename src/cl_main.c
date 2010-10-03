@@ -71,7 +71,7 @@ int cl_init(void)
 	cl_model_skin(&ent, 0);
 	cl_model_animate(&ent, 146, 214);
 
-	map = q2bsp_load("maps/q2dm1.bsp");
+	//map = q2bsp_load("maps/q2dm1.bsp");
 
 	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
 		"data/d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");

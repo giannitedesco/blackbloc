@@ -13,7 +13,7 @@ blackbloc_SOURCES = \
 	gl_render.c \
 	sdl_mouse.c \
 	sdl_keyb.c \
-	teximage.c \
+	tex.c \
 	hud.c \
 	\
 	cl_main.c \
@@ -23,7 +23,6 @@ blackbloc_SOURCES = \
 	img_pcx.c \
 	img_tga.c \
 	img_png.c \
-	q2wal.c \
 	\
 	md2.c \
 	md5anim.c \
@@ -34,3 +33,5 @@ blackbloc_SOURCES = \
 	vector.c \
 	gfile.c \
 	main.c
+#	q2wal.c \
+#

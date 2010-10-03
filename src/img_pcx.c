@@ -7,35 +7,104 @@
 */
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/gfile.h>
-#include <blackbloc/teximage.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/gl_render.h>
 #include <blackbloc/img/pcx.h>
 
-static struct image *pcxs;
+#include "teximg.h"
+
+/* On disk format */
+#define PCX_PAL 768 /* number of palette entries */
+struct pcx {
+	uint8_t		manufacturer;
+	uint8_t		version;
+	uint8_t		encoding;
+	uint8_t		bits_per_pixel;
+	uint16_t	xmin,ymin,xmax,ymax;
+	uint16_t	hres,vres;
+	uint8_t		palette[48];
+	uint8_t		reserved;
+	uint8_t		color_planes;
+	uint16_t	bytes_per_line;
+	uint16_t	palette_type;
+	uint8_t		filler[58];
+};
+
+/* Internal API */
+struct _pcx_img {
+	struct _texture tex;
+	struct gfile f;
+	uint16_t width, height;
+	const uint8_t *compressed;
+	struct list_head list;
+};
+
+static LIST_HEAD(pcx_list);
+
+static int prep_resample(struct _texture *tex, unsigned int mip, GLint format)
+{
+	uint32_t w, h;
+	uint8_t *buf;
+
+	assert(format == GL_RGBA || format == GL_BGRA);
+
+	/* Round to powers of 2 (for OpenGL) */
+	for(w = 1; w < tex->t_mipmap[mip].m_width; w <<= 1);
+	for(h = 1; h < tex->t_mipmap[mip].m_height; h <<= 1);
+
+	if ( w != tex->t_mipmap[mip].m_width || h != tex->t_mipmap[mip].m_height ) {
+		buf = malloc(w * h * 4);
+		if ( buf == NULL ) {
+			con_printf("teximg_upload_resample: %s: malloc(): %s\n",
+				tex->t_name, get_err());
+			return 0;
+		}
+
+		/* Actually resample the image */
+		teximg_resample(tex->t_mipmap[mip].m_pixels,
+				tex->t_mipmap[mip].m_width,
+				tex->t_mipmap[mip].m_height,
+				buf, w, h, format);
+
+		/* Free old image */
+		free(tex->t_mipmap[mip].m_pixels);
+
+		/* Overwrite with scaled image */
+		tex->t_mipmap[mip].m_width = w;
+		tex->t_mipmap[mip].m_height = h;
+		tex->t_mipmap[mip].m_pixels = buf;
+	}
+
+	return 1;
+}
 
 /* Convert in to a full RGBA texture before uploading */
-static int pcx_upload(struct image *i)
+static int pcx_prep(struct _texture *tex, unsigned int mip)
 {
-	const uint8_t *pal, *in = i->s_pixels;
+	struct _pcx_img *pcx = (struct _pcx_img *)tex;
+	const uint8_t *pal, *in = pcx->compressed;
 	uint8_t *out;
 	uint8_t cur;
 	int run;
 	uint32_t x,y;
 
-	/* The size is checked in pcx_load */
-	pal = i->f.f_ptr + i->f.f_len - PCX_PAL;
-
-	i->mipmap[0].pixels = malloc(i->s_width * i->s_height * 4);
-	if ( i->mipmap[0].pixels == NULL )
+	if ( mip )
 		return 0;
 
-	i->mipmap[0].width = i->s_width;
-	i->mipmap[0].height = i->s_height;
+	/* The size is checked in pcx_load */
+	pal = pcx->f.f_ptr + pcx->f.f_len - PCX_PAL;
 
-	out = i->mipmap[0].pixels;
+	tex->t_mipmap[mip].m_pixels = malloc(pcx->width * pcx->height * 4);
+	if ( tex->t_mipmap[mip].m_pixels == NULL )
+		return 0;
 
-	for(y = 0; y < i->s_height; y++, out += i->s_width * 4) {
-		for(x = 0; x < i->s_width; ) {
+	tex->t_mipmap[mip].m_width = pcx->width;
+	tex->t_mipmap[mip].m_height = pcx->height;
+
+	out = tex->t_mipmap[mip].m_pixels;
+
+	for(y = 0; y < pcx->height; y++, out += pcx->width * 4) {
+		for(x = 0; x < pcx->width; ) {
 			cur = *in++;
 
 			if ( (cur & 0xc0)  == 0xc0 ) {
@@ -61,107 +130,105 @@ static int pcx_upload(struct image *i)
 		}
 	}
 
-	return img_upload_resample(i, GL_RGBA);
+	return prep_resample(tex, mip, GL_RGBA);
 }
 
-static int do_pcx_load(const char *name, uint8_t *map)
+static unsigned int pcx_width(struct _texture *tex)
 {
-	struct image *i;
-	struct pcx pcx;
+	struct _pcx_img *pcx = (struct _pcx_img *)tex;
+	return pcx->width;
+}
 
-	i = calloc(1, sizeof(*i));
-	if ( i == NULL )
+static unsigned int pcx_height(struct _texture *tex)
+{
+	struct _pcx_img *pcx = (struct _pcx_img *)tex;
+	return pcx->height;
+}
+
+static const struct _texops pcx_ops = {
+	.prep = pcx_prep,
+	.unprep = teximg_unprep_generic,
+	.upload = teximg_upload_rgba,
+	.dtor = teximg_dtor_generic,
+	.width = pcx_width,
+	.height = pcx_height,
+};
+
+static struct _texture *do_pcx_load(const char *name)
+{
+	struct _pcx_img *pcx;
+	struct pcx hdr;
+
+	pcx = calloc(1, sizeof(*pcx));
+	if ( pcx == NULL )
 		return 0;
 
-	if ( !game_open(&i->f, name) )
+	if ( !game_open(&pcx->f, name) )
 		goto err_free;
 
-	if ( i->f.f_len < sizeof(pcx) + PCX_PAL )
+	if ( pcx->f.f_len < sizeof(hdr) + PCX_PAL )
 		goto err;
 
 	/* Check the header out */
-	memcpy(&pcx, i->f.f_ptr, sizeof(pcx));
-	pcx.xmin = le_16(pcx.xmin);
-	pcx.ymin = le_16(pcx.ymin);
-	pcx.xmax = le_16(pcx.xmax);
-	pcx.ymax = le_16(pcx.ymax);
-	pcx.hres = le_16(pcx.hres);
-	pcx.vres = le_16(pcx.vres);
-	pcx.bytes_per_line = le_16(pcx.bytes_per_line);
-	pcx.palette_type = le_16(pcx.palette_type);
-	if ( pcx.manufacturer != 0x0a ||
-		pcx.version != 5 ||
-		pcx.encoding != 1 ||
-		pcx.bits_per_pixel != 8 ||
-		pcx.xmax >= 640 ||
-		pcx.ymax >= 480 ) {
+	memcpy(&hdr, pcx->f.f_ptr, sizeof(hdr));
+	hdr.xmin = le16toh(hdr.xmin);
+	hdr.ymin = le16toh(hdr.ymin);
+	hdr.xmax = le16toh(hdr.xmax);
+	hdr.ymax = le16toh(hdr.ymax);
+	hdr.hres = le16toh(hdr.hres);
+	hdr.vres = le16toh(hdr.vres);
+	hdr.bytes_per_line = le16toh(hdr.bytes_per_line);
+	hdr.palette_type = le16toh(hdr.palette_type);
+	if ( hdr.manufacturer != 0x0a ||
+		hdr.version != 5 ||
+		hdr.encoding != 1 ||
+		hdr.bits_per_pixel != 8 ||
+		hdr.xmax >= 640 ||
+		hdr.ymax >= 480 ) {
 		con_printf("%s: bad PCX file\n", name);
 		goto err;
 	}
 
-	i->s_width = pcx.xmax + 1;
-	i->s_height = pcx.ymax + 1;
-	i->s_pixels = i->f.f_ptr + sizeof(pcx);
-	i->name = i->f.f_name;
-	i->upload = pcx_upload;
-	i->unload = img_free_unload;
+	pcx->width = hdr.xmax + 1;
+	pcx->height = hdr.ymax + 1;
+	pcx->compressed = pcx->f.f_ptr + sizeof(hdr);
+	pcx->tex.t_name = pcx->f.f_name;
+	pcx->tex.t_ops = &pcx_ops;
 
-	if ( i->s_width == 0 || i->s_height == 0 )
+	if ( pcx->width == 0 || pcx->height == 0 )
 		goto err;
 
-	/* Palette copy mode */
-	if ( map ) {
-		const uint8_t *pal = i->f.f_ptr + i->f.f_len - PCX_PAL;
-		memcpy(map, pal, PCX_PAL);
-		game_close(&i->f);
-		free(i);
-		return 1;
-	}
+	con_printf("pcx: %s (%ux%u)\n",
+			pcx->tex.t_name, pcx->width, pcx->height);
 
-	con_printf("pcx: %s (%ix%i)\n",
-			i->name, i->s_width, i->s_height);
-
-	i->next = pcxs;
-	pcxs = i;
-
-	return 1;
+	list_add_tail(&pcx->list, &pcx_list);
+	tex_get(&pcx->tex);
+	return &pcx->tex;
 err:
-	game_close(&i->f);
+	game_close(&pcx->f);
 err_free:
-	free(i);
-	return 0;
+	free(pcx);
+	return NULL;
 }
 
-struct image *pcx_get_by_name(const char *n)
+const uint8_t *pcx_get_colormap(pcx_img_t pcx, size_t *sz)
 {
-	struct image *ret;
-	int again = 0;
+	const uint8_t *pal = pcx->f.f_ptr + pcx->f.f_len - PCX_PAL;
+	if ( sz )
+		*sz = PCX_PAL;
+	return pal;
+}
 
-try_again:
-	for(ret = pcxs; ret; ret = ret->next) {
-		if ( !strcmp(n, ret->name) ) {
-			img_get(ret);
-			return ret;
+texture_t pcx_get_by_name(const char *name)
+{
+	struct _pcx_img *pcx;
+
+	list_for_each_entry(pcx, &pcx_list, list) {
+		if ( !strcmp(name, pcx->tex.t_name) ) {
+			tex_get(&pcx->tex);
+			return &pcx->tex;
 		}
 	}
 
-	if ( again )
-		return NULL;
-
-	/* load from textures/name.wal */
-	if ( !pcx_load(n) )
-		return NULL;
-
-	again = 1;
-	goto try_again;
-}
-
-int pcx_load_colormap(const char *name, uint8_t *map)
-{
-	return do_pcx_load(name, map);
-}
-
-int pcx_load(const char *name)
-{
-	return do_pcx_load(name, NULL);
+	return do_pcx_load(name);
 }

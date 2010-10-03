@@ -18,7 +18,7 @@
 #include <blackbloc/gl_render.h>
 #include <blackbloc/client.h>
 #include <blackbloc/gfile.h>
-#include <blackbloc/teximage.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/sdl_keyb.h>
 #include <blackbloc/img/pcx.h>
 #include <blackbloc/img/png.h>
@@ -30,10 +30,10 @@
 #define PROMPT_LEN 9
 #define PROMPT "console> "
 
-static struct image *crosshair;
-static struct image *conchars;
-static struct image *hudchars;
-static struct image *conback;
+static texture_t crosshair;
+static texture_t conchars;
+static texture_t hudchars;
+static texture_t conback;
 
 static char lbuf[4096];
 static char ibuf[256];
@@ -54,7 +54,7 @@ static int showcon = 0;
 vector_t hud_col;
 vector_t con_col;
 
-static inline void hud_char(struct image *i,
+static inline void hud_char(texture_t i,
 				vector_t color,
 				int sz, int x, int y, int num)
 {
@@ -79,7 +79,7 @@ static inline void hud_char(struct image *i,
 	fcol = col * 1.0f/16.0f;
 	size = 1.0f/16.0f;
 
-	img_bind(i);
+	tex_bind(i);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glBegin(GL_QUADS);
@@ -110,7 +110,7 @@ static void crosshair_render(void)
 	float ymin = (vid_y/2) - (sz/2);
 	float ymax = (vid_y/2) + (sz/2);
 
-	img_bind(crosshair);
+	tex_bind(crosshair);
 	glBegin(GL_QUADS);
 	glTexCoord2f(0, 0);
 	glVertex2f(xmin, ymin);
@@ -157,7 +157,7 @@ static void con_render(void)
 		return;
 
 	/* Draw console background */
-	img_bind(conback);
+	tex_bind(conback);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glBegin(GL_QUADS);
 

@@ -19,7 +19,7 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/gfile.h>
 #include <blackbloc/client.h>
-#include <blackbloc/teximage.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/img/q2wal.h>
 #include <blackbloc/img/tga.h>
 #include <blackbloc/map/q2bsp.h>
@@ -145,10 +145,10 @@ static void build_polygon(struct _q2bsp *map, struct bsp_msurface *fa)
 		}
 
 		s = v_dotproduct(vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
-		s /= fa->texinfo->image->mipmap[0].width;
+		s /= tex_width(fa->texinfo->image);
 
 		t = v_dotproduct(vec, fa->texinfo->vecs[1]) + fa->texinfo->vecs[1][3];
-		t /= fa->texinfo->image->mipmap[0].height;
+		t /= tex_height(fa->texinfo->image);
 
 		poly->verts[i][0] = vec[0];
 		poly->verts[i][1] = vec[1];
@@ -675,9 +675,9 @@ static int q2bsp_vertexes(struct _q2bsp *map, const void *data, int len)
 	return 1;
 }
 
-static struct image *get_texture(const char *name)
+static texture_t get_texture(const char *name)
 {
-	struct image *ret;
+	texture_t ret;
 	size_t len = strlen(name);
 	char fn[9 + len + 5];
 
@@ -686,7 +686,7 @@ static struct image *get_texture(const char *name)
 	if ( ret )
 		return ret;
 
-	return q2wal_get(name);
+	return NULL; //return q2wal_get(name);
 }
 
 static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
@@ -781,6 +781,7 @@ q2bsp_t q2bsp_load(const char *name)
 	struct bsp_header hdr;
 	uint32_t *tmp;
 	unsigned int i;
+	int ret;
 
 	map = calloc(1, sizeof(*map));
 	if ( NULL == map ) {
@@ -821,36 +822,73 @@ q2bsp_t q2bsp_load(const char *name)
 		}
 	}
 
-	q2bsp_vertexes(map, f.f_ptr + hdr.lumps[LUMP_VERTEXES].ofs,
+	ret = q2bsp_vertexes(map, f.f_ptr + hdr.lumps[LUMP_VERTEXES].ofs,
 			hdr.lumps[LUMP_VERTEXES].len);
-	q2bsp_edges(map, f.f_ptr + hdr.lumps[LUMP_EDGES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_edges(map, f.f_ptr + hdr.lumps[LUMP_EDGES].ofs,
 			hdr.lumps[LUMP_EDGES].len);
-	q2bsp_surfedges(map, f.f_ptr + hdr.lumps[LUMP_SURFEDGES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_surfedges(map, f.f_ptr + hdr.lumps[LUMP_SURFEDGES].ofs,
 			hdr.lumps[LUMP_SURFEDGES].len);
-	q2bsp_lighting(map, f.f_ptr + hdr.lumps[LUMP_LIGHTING].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_lighting(map, f.f_ptr + hdr.lumps[LUMP_LIGHTING].ofs,
 			hdr.lumps[LUMP_LIGHTING].len);
-	q2bsp_planes(map, f.f_ptr + hdr.lumps[LUMP_PLANES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_planes(map, f.f_ptr + hdr.lumps[LUMP_PLANES].ofs,
 			hdr.lumps[LUMP_PLANES].len);
-	q2bsp_texinfo(map, f.f_ptr + hdr.lumps[LUMP_TEXINFO].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_texinfo(map, f.f_ptr + hdr.lumps[LUMP_TEXINFO].ofs,
 			hdr.lumps[LUMP_TEXINFO].len);
-	q2bsp_faces(map, f.f_ptr + hdr.lumps[LUMP_FACES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_faces(map, f.f_ptr + hdr.lumps[LUMP_FACES].ofs,
 			hdr.lumps[LUMP_FACES].len);
-	q2bsp_marksurfaces(map, f.f_ptr + hdr.lumps[LUMP_LEAFFACES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_marksurfaces(map, f.f_ptr + hdr.lumps[LUMP_LEAFFACES].ofs,
 			hdr.lumps[LUMP_LEAFFACES].len);
-	q2bsp_visibility(map, f.f_ptr + hdr.lumps[LUMP_VISIBILITY].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_visibility(map, f.f_ptr + hdr.lumps[LUMP_VISIBILITY].ofs,
 			hdr.lumps[LUMP_VISIBILITY].len);
-	q2bsp_leafs(map, f.f_ptr + hdr.lumps[LUMP_LEAFS].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_leafs(map, f.f_ptr + hdr.lumps[LUMP_LEAFS].ofs,
 			hdr.lumps[LUMP_LEAFS].len);
-	q2bsp_nodes(map, f.f_ptr + hdr.lumps[LUMP_NODES].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_nodes(map, f.f_ptr + hdr.lumps[LUMP_NODES].ofs,
 			hdr.lumps[LUMP_NODES].len);
-	q2bsp_submodels(map, f.f_ptr + hdr.lumps[LUMP_MODELS].ofs,
+	if ( !ret )
+		goto err_close;
+
+	ret = q2bsp_submodels(map, f.f_ptr + hdr.lumps[LUMP_MODELS].ofs,
 			hdr.lumps[LUMP_MODELS].len);
+	if ( !ret )
+		goto err_close;
+
 
 	con_printf("bsp: %s loaded OK\n", name);
 	return map;
 
 err_close:
 	game_close(&f);
+	do_free(map);
 err:
 	return NULL;
 }
@@ -876,13 +914,13 @@ static void q2bsp_surfrender(struct _q2bsp *map, struct bsp_msurface *s)
 		glEnd();
 
 		glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 	}
 #endif
 
 #if 1
-	img_bind(s->texinfo->image);
+	tex_bind(s->texinfo->image);
 	glBegin(GL_POLYGON);
 	v=p->verts[0];
 	for(i=0; i<p->numverts; i++, v+=VERTEXSIZE) {

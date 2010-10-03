@@ -33,6 +33,7 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/vector.h>
 #include <blackbloc/client.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/img/tga.h>
 #include <blackbloc/model/md5.h>
 
@@ -533,7 +534,7 @@ void md5_render(void)
 {
 	int i;
 	static unsigned int last_frame = 0;
-	struct teximage *skin;
+	texture_t skin;
 
 	skin = tga_get_by_name("d3/demo/models/characters/male_npc/marine/marine.tga");
 	if (animated) {
@@ -558,7 +559,7 @@ void md5_render(void)
 	glCullFace(GL_FRONT);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	img_bind(skin);
+	tex_bind(skin);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);

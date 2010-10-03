@@ -6,7 +6,6 @@
 #ifndef __IMG_PNG_HEADER_INCLUDED__
 #define __IMG_PNG_HEADER_INCLUDED__
 
-/* Internal API */
-struct image *png_get_by_name(char *name);
+texture_t png_get_by_name(const char *name);
 
 #endif /* __IMG_PNG_HEADER_INCLUDED__ */
