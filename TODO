@@ -1,12 +1,6 @@
 Infrastructure
 --------------
- o Headers need re-working
-   - SDL is required for some headers
-   - a lot of implementatin details are public, hide them away
-   - OS specific inline functions and shit!
- o Image API needs re-thinking
-   - needs thinking about in terms of mipmaps, normal-maps, shaders
-   - naming and caching is a bit arbitrary
+ o win32 portability
  o Re-think console and HUD
    - much can be done before rendering to texture
    - eg. line buffered approach, store array of pointers to last 1 page worth
