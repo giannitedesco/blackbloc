@@ -76,8 +76,8 @@ int cl_init(void)
 		}
 	}
 
-	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
-		"data/d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
+	md5_load("d3/demo/models/md5/chars/marine.md5mesh",
+		"d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
 	return 1;
 }
 

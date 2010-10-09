@@ -31,12 +31,12 @@
  */
 
 #include <blackbloc/blackbloc.h>
+#include <blackbloc/textreader.h>
 #include <blackbloc/vector.h>
 #include <blackbloc/client.h>
 #include <blackbloc/model/md5.h>
 
 #include <stdio.h>
-
 #include "md5.h"
 
 /* Joint info */
@@ -178,35 +178,34 @@ BuildFrameSkeleton(const struct joint_info_t *jointInfos,
  */
 int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 {
-	FILE *fp = NULL;
-	char buff[512];
+	struct gfile f;
+	textreader_t txt;
+	char *line;
 	struct joint_info_t *jointInfos = NULL;
 	struct baseframe_joint_t *baseFrame = NULL;
 	float *animFrameData = NULL;
 	int version;
 	int numAnimatedComponents;
 	int frame_index;
-	int i;
+	int i, ret;
 
-	fp = fopen(filename, "rb");
-	if (!fp) {
-		fprintf(stderr, "error: couldn't open \"%s\"!\n", filename);
+	if ( !game_open(&f, filename) ) {
+		con_printf("md5: error: couldn't open \"%s\"!\n", filename);
 		return 0;
 	}
 
-	while (!feof(fp)) {
-		/* Read whole line */
-		fgets(buff, sizeof(buff), fp);
+	txt = textreader_new(f.f_ptr, f.f_len);
+	if ( NULL == txt )
+		goto out_close;
 
-		if (sscanf(buff, " MD5Version %d", &version) == 1) {
+	while( (line = textreader_gets(txt)) ) {
+		if (sscanf(line, " MD5Version %d", &version) == 1) {
 			if (version != 10) {
 				/* Bad version */
-				fprintf(stderr,
-					"Error: bad animation version\n");
-				fclose(fp);
-				return 0;
+				con_printf("Error: bad animation version\n");
+				goto out;
 			}
-		} else if (sscanf(buff, " numFrames %d", &anim->num_frames) ==
+		} else if (sscanf(line, " numFrames %d", &anim->num_frames) ==
 			   1) {
 			/* Allocate memory for skeleton frames and bounding boxes */
 			if (anim->num_frames > 0) {
@@ -217,7 +216,7 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 				    malloc(sizeof(struct md5_bbox_t) *
 					   anim->num_frames);
 			}
-		} else if (sscanf(buff, " numJoints %d", &anim->num_joints) ==
+		} else if (sscanf(line, " numJoints %d", &anim->num_joints) ==
 			   1) {
 			if (anim->num_joints > 0) {
 				for (i = 0; i < anim->num_frames; ++i) {
@@ -237,13 +236,13 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 				    malloc(sizeof(struct baseframe_joint_t) *
 					   anim->num_joints);
 			}
-		} else if (sscanf(buff, " frameRate %d", &anim->frameRate) == 1) {
+		} else if (sscanf(line, " frameRate %d", &anim->frameRate) == 1) {
 			/*
 			   printf ("md5anim: animation's frame rate is %d\n", anim->frameRate);
 			 */
 		} else
 		    if (sscanf
-			(buff, " numAnimatedComponents %d",
+			(line, " numAnimatedComponents %d",
 			 &numAnimatedComponents) == 1) {
 			if (numAnimatedComponents > 0) {
 				/* Allocate memory for animation frame data */
@@ -251,24 +250,24 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 				    (float *)malloc(sizeof(float) *
 						    numAnimatedComponents);
 			}
-		} else if (strncmp(buff, "hierarchy {", 11) == 0) {
+		} else if (strncmp(line, "hierarchy {", 11) == 0) {
 			for (i = 0; i < anim->num_joints; ++i) {
 				/* Read whole line */
-				fgets(buff, sizeof(buff), fp);
+				line = textreader_gets(txt);
 
 				/* Read joint info */
-				sscanf(buff, " %s %d %d %d", jointInfos[i].name,
+				sscanf(line, " %s %d %d %d", jointInfos[i].name,
 				       &jointInfos[i].parent,
 				       &jointInfos[i].flags,
 				       &jointInfos[i].startIndex);
 			}
-		} else if (strncmp(buff, "bounds {", 8) == 0) {
+		} else if (strncmp(line, "bounds {", 8) == 0) {
 			for (i = 0; i < anim->num_frames; ++i) {
 				/* Read whole line */
-				fgets(buff, sizeof(buff), fp);
+				line = textreader_gets(txt);
 
 				/* Read bounding box */
-				sscanf(buff, " ( %f %f %f ) ( %f %f %f )",
+				sscanf(line, " ( %f %f %f ) ( %f %f %f )",
 				       &anim->bboxes[i].min[0],
 				       &anim->bboxes[i].min[1],
 				       &anim->bboxes[i].min[2],
@@ -276,13 +275,13 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 				       &anim->bboxes[i].max[1],
 				       &anim->bboxes[i].max[2]);
 			}
-		} else if (strncmp(buff, "baseframe {", 10) == 0) {
+		} else if (strncmp(line, "baseframe {", 10) == 0) {
 			for (i = 0; i < anim->num_joints; ++i) {
 				/* Read whole line */
-				fgets(buff, sizeof(buff), fp);
+				line = textreader_gets(txt);
 
 				/* Read base frame joint */
-				if (sscanf(buff, " ( %f %f %f ) ( %f %f %f )",
+				if (sscanf(line, " ( %f %f %f ) ( %f %f %f )",
 					   &baseFrame[i].pos[0],
 					   &baseFrame[i].pos[1],
 					   &baseFrame[i].pos[2],
@@ -293,10 +292,19 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 					Quat_computeW(baseFrame[i].orient);
 				}
 			}
-		} else if (sscanf(buff, " frame %d", &frame_index) == 1) {
-			/* Read frame data */
-			for (i = 0; i < numAnimatedComponents; ++i)
-				fscanf(fp, "%f", &animFrameData[i]);
+		} else if (sscanf(line, "frame %d {", &frame_index) == 1) {
+			int x, y;
+			for(i = 0;;) {
+				char *tok[numAnimatedComponents - i];
+				line = textreader_gets(txt);
+				if ( NULL == line || line[0] == '}' )
+					break;
+				x = easy_explode(line, 0, tok,
+						sizeof(tok)/sizeof(*tok));
+				for(y = 0; y < x; y++, i++) {
+					sscanf(tok[y], "%f", &animFrameData[i]);
+				}
+			}
 
 			/* Build frame skeleton from the collected data */
 			BuildFrameSkeleton(jointInfos, baseFrame, animFrameData,
@@ -304,8 +312,6 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 					   anim->num_joints);
 		}
 	}
-
-	fclose(fp);
 
 	/* Free temporary data allocated */
 	if (animFrameData)
@@ -317,7 +323,13 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 	if (jointInfos)
 		free(jointInfos);
 
-	return 1;
+	ret = 1;
+
+out:
+	textreader_free(txt);
+out_close:
+	game_close(&f);
+	return ret;
 }
 
 /**

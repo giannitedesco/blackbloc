@@ -30,6 +30,7 @@ blackbloc_SOURCES = \
 	\
 	q2bsp.c \
 	\
+	textreader.c \
 	vector.c \
 	gfile.c \
 	quat.c \

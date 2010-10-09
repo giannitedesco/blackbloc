@@ -1,11 +1,13 @@
 /*
- * md5mesh.c -- md5mesh model loader + animation
- * last modification: aug. 14, 2007
- *
  * Doom3's md5mesh viewer with animation.  Mesh portion.
  * Dependences: md5model.h, md5anim.c.
  *
  * Copyright (c) 2005-2007 David HENRY
+ * Copyright (c) 2010 Gianni Tedesco
+ *  - Added texturelist support
+ *  - Reimplemented animations
+ *  - Implemented multiple anim and mesh loading
+ *  - Ported to blackbloc file loading API
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -31,6 +33,7 @@
  */
 
 #include <blackbloc/blackbloc.h>
+#include <blackbloc/textreader.h>
 #include <blackbloc/vector.h>
 #include <blackbloc/client.h>
 #include <blackbloc/tex.h>
@@ -38,8 +41,6 @@
 #include <blackbloc/model/md5.h>
 
 #include "md5.h"
-
-#include <stdio.h>
 
 struct md5_model_t md5file;
 struct md5_anim_t md5anim;
@@ -78,44 +79,44 @@ static void FreeVertexArrays(void)
  */
 static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 {
-	FILE *fp;
-	char buff[512];
-	int version;
+	struct gfile f;
+	textreader_t txt;
+	int version, ret = 0;
 	int curr_mesh = 0;
 	unsigned int i;
+	char *line;
 
-	fp = fopen(filename, "rb");
-	if (!fp) {
-		fprintf(stderr, "Error: couldn't open \"%s\"!\n", filename);
+	if ( !game_open(&f, filename) ) {
+		con_printf("md5: error: couldn't open \"%s\"!\n", filename);
 		return 0;
 	}
 
-	while (!feof(fp)) {
-		/* Read whole line */
-		fgets(buff, sizeof(buff), fp);
+	txt = textreader_new(f.f_ptr, f.f_len);
+	if ( NULL == txt )
+		goto out_close;
 
-		if (sscanf(buff, " MD5Version %d", &version) == 1) {
+	while ( (line = textreader_gets(txt)) ) {
+		if (sscanf(line, " MD5Version %d", &version) == 1) {
 			if (version != 10) {
 				/* Bad version */
-				fprintf(stderr, "Error: bad model version\n");
-				fclose(fp);
-				return 0;
+				con_printf("Error: bad model version\n");
+				goto out;
 			}
-		} else if (sscanf(buff, " numJoints %d", &mdl->num_joints) == 1) {
+		} else if (sscanf(line, " numJoints %d", &mdl->num_joints) == 1) {
 			if (mdl->num_joints > 0) {
 				/* Allocate memory for base skeleton joints */
 				mdl->baseSkel = (struct md5_joint_t *)
 				    calloc(mdl->num_joints,
 					   sizeof(struct md5_joint_t));
 			}
-		} else if (sscanf(buff, " numMeshes %d", &mdl->num_meshes) == 1) {
+		} else if (sscanf(line, " numMeshes %d", &mdl->num_meshes) == 1) {
 			if (mdl->num_meshes > 0) {
 				/* Allocate memory for meshes */
 				mdl->meshes = (struct md5_mesh_t *)
 				    calloc(mdl->num_meshes,
 					   sizeof(struct md5_mesh_t));
 			}
-		} else if (strncmp(buff, "joints {", 8) == 0) {
+		} else if (strncmp(line, "joints {", 8) == 0) {
 			int i;
 
 			/* Read each joint */
@@ -123,10 +124,10 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 				struct md5_joint_t *joint = &mdl->baseSkel[i];
 
 				/* Read whole line */
-				fgets(buff, sizeof(buff), fp);
+				line = textreader_gets(txt);
 
 				if (sscanf
-				    (buff, "%s %d ( %f %f %f ) ( %f %f %f )",
+				    (line, "%s %d ( %f %f %f ) ( %f %f %f )",
 				     joint->name, &joint->parent,
 				     &joint->pos[0], &joint->pos[1],
 				     &joint->pos[2], &joint->orient[0],
@@ -136,7 +137,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					Quat_computeW(joint->orient);
 				}
 			}
-		} else if (strncmp(buff, "mesh {", 6) == 0) {
+		} else if (strncmp(line, "mesh {", 6) == 0) {
 			struct md5_mesh_t *mesh = &mdl->meshes[curr_mesh];
 			int vert_index = 0;
 			int tri_index = 0;
@@ -144,30 +145,30 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 			float fdata[4];
 			int idata[3];
 
-			while ((buff[0] != '}') && !feof(fp)) {
+			while ((line[0] != '}')) {
 				/* Read whole line */
-				fgets(buff, sizeof(buff), fp);
+				line = textreader_gets(txt);
 
-				if (strstr(buff, "shader ")) {
+				if (strstr(line, "shader ")) {
 					int quote = 0, j = 0;
 
 					/* Copy the shader name whithout the quote marks */
 					for (i = 0;
-					     i < sizeof(buff) && (quote < 2);
+					     i < sizeof(line) && (quote < 2);
 					     ++i) {
-						if (buff[i] == '\"')
+						if (line[i] == '\"')
 							quote++;
 
 						if ((quote == 1)
-						    && (buff[i] != '\"')) {
+						    && (line[i] != '\"')) {
 							mesh->shader[j] =
-							    buff[i];
+							    line[i];
 							j++;
 						}
 					}
 				} else
 				    if (sscanf
-					(buff, " numverts %d",
+					(line, " numverts %d",
 					 &mesh->num_verts) == 1) {
 					if (mesh->num_verts > 0) {
 						/* Allocate memory for vertices */
@@ -184,7 +185,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					}
 				} else
 				    if (sscanf
-					(buff, " numtris %d",
+					(line, " numtris %d",
 					 &mesh->num_tris) == 1) {
 					if (mesh->num_tris > 0) {
 						/* Allocate memory for triangles */
@@ -202,7 +203,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					}
 				} else
 				    if (sscanf
-					(buff, " numweights %d",
+					(line, " numweights %d",
 					 &mesh->num_weights) == 1) {
 					if (mesh->num_weights > 0) {
 						/* Allocate memory for vertex weights */
@@ -214,7 +215,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					}
 				} else
 				    if (sscanf
-					(buff, " vert %d ( %f %f ) %d %d",
+					(line, " vert %d ( %f %f ) %d %d",
 					 &vert_index, &fdata[0], &fdata[1],
 					 &idata[0], &idata[1]) == 5) {
 					/* Copy vertex data */
@@ -228,7 +229,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					    idata[1];
 				} else
 				    if (sscanf
-					(buff, " tri %d %d %d %d", &tri_index,
+					(line, " tri %d %d %d %d", &tri_index,
 					 &idata[0], &idata[1],
 					 &idata[2]) == 4) {
 					/* Copy triangle data */
@@ -240,7 +241,7 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 					    idata[2];
 				} else
 				    if (sscanf
-					(buff, " weight %d %d %f ( %f %f %f )",
+					(line, " weight %d %d %f ( %f %f %f )",
 					 &weight_index, &idata[0], &fdata[3],
 					 &fdata[0], &fdata[1],
 					 &fdata[2]) == 6) {
@@ -262,9 +263,13 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 		}
 	}
 
-	fclose(fp);
+	ret = 1;
 
-	return 1;
+out:
+	textreader_free(txt);
+out_close:
+	game_close(&f);
+	return ret;
 }
 
 /**
@@ -392,7 +397,6 @@ void md5_load(const char *filename, const char *animfile)
 			FreeAnim(&md5anim);
 			goto out;
 		}
-
 		if ( !CheckAnimValidity(&md5file, &md5anim) ) {
 			FreeAnim(&md5anim);
 			goto out;
