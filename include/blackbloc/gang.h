@@ -33,13 +33,10 @@ struct gang {
 	struct gang_slab *tail;
 };
 
-int _public gang_init(struct gang *m, size_t slab_size)
-	_nonull(1);
-void _public gang_fini(struct gang *m) _nonull(1);
-void * _public gang_alloc(struct gang *m, size_t sz)
-	_nonull(1) _malloc;
-static inline void *gang_alloc0(struct gang *m, size_t sz)
-	_nonull(1) _malloc;
+_public int gang_init(struct gang *m, size_t slab_size);
+_public void gang_fini(struct gang *m);
+_malloc _public void * gang_alloc(struct gang *m, size_t sz);
+_malloc static inline void *gang_alloc0(struct gang *m, size_t sz);
 
 /** Allocate an object initialized to zero.
  * \ingroup g_gang

@@ -28,7 +28,6 @@
 #endif
 
 #if __GNUC__ > 2
-#define _nonull(x...) __attribute__((nonnull (x)))
 #define _constfn __attribute__((const))
 #define _malloc_nocheck __attribute__((malloc))
 #define _func __FUNCTION__
@@ -72,10 +71,6 @@
 
 #ifndef _printf
 #define _printf(x,y)
-#endif
-
-#ifndef _nonull
-#define _nonull(x...)
 #endif
 
 #ifndef _malloc_nocheck

@@ -35,13 +35,12 @@ struct mpool_hdr {
 	uint8_t data[0];
 };
 
-int _public mpool_init(struct mpool *m, size_t obj_size, unsigned slab_size)
-	_nonull(1);
-void _public mpool_fini(struct mpool *m) _nonull(1);
-void _public mpool_destroy(struct mpool *m, void(*dtor)(void *)) _nonull(1,2);
-void * _public mpool_alloc(struct mpool *m) _malloc _nonull(1);
-static inline void *mpool_alloc0(struct mpool *m) _malloc _nonull(1);
-static inline void mpool_free(struct mpool *m, void *obj) _nonull(1);
+_public int mpool_init(struct mpool *m, size_t obj_size, unsigned slab_size);
+_public void mpool_fini(struct mpool *m);
+_public void mpool_destroy(struct mpool *m, void(*dtor)(void *));
+_public _malloc void *mpool_alloc(struct mpool *m);
+_malloc static inline void *mpool_alloc0(struct mpool *m);
+static inline void mpool_free(struct mpool *m, void *obj);
 
 /** Free an individual object.
  * \ingroup g_mpool

@@ -15,12 +15,10 @@ struct gfile {
 	const char *f_name;
 };
 
-gfs_t gfs_open(const char *filename) _nonull(1) _check_result;
-void gfs_close(gfs_t fs) _nonull(1);
+_check_result gfs_t gfs_open(const char *filename);
+void gfs_close(gfs_t fs);
 
-int gfile_open(gfs_t fs, struct gfile *f, const char *name)
-			_nonull(1,2,3) _check_result;
-void gfile_close(gfs_t fs, struct gfile *f)
-			_nonull(1);
+_check_result int gfile_open(gfs_t fs, struct gfile *f, const char *name);
+void gfile_close(gfs_t fs, struct gfile *f);
 
 #endif /* _GFILE_HEADER_INCLUDED_ */
