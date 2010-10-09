@@ -78,6 +78,9 @@ void tex_get(struct _texture *tex)
 
 void tex_put(struct _texture *tex)
 {
+	if ( NULL == tex )
+		return;
+
 	assert(tex->t_ref);
 	tex->t_ref--;
 	if ( tex->t_ref == 0 ) {
