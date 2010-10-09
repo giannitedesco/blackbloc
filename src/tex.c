@@ -6,6 +6,7 @@
 * Texture handling routines.
 */
 #include <blackbloc/blackbloc.h>
+#include <blackbloc/client.h>
 #include <blackbloc/gfile.h>
 #include <blackbloc/tex.h>
 
@@ -99,9 +100,15 @@ void teximg_dtor_generic(texture_t tex)
 	free(tex);
 }
 
+static int notex;
+void clcmd_textures(int s, char *arg)
+{
+	notex = !notex;
+}
+
 void tex_bind(struct _texture *tex)
 {
-	if ( NULL == tex ) {
+	if ( notex || NULL == tex ) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		return;
 	}

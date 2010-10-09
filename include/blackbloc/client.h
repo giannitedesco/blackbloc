@@ -54,6 +54,7 @@ void clcmd_strafe_right(int, char *);
 void clcmd_crouch(int, char *);
 void clcmd_jump(int, char *);
 void clcmd_map(int, char *);
+void clcmd_textures(int, char *);
 
 void cl_move(void);
 void cl_viewangles(vector_t angles);

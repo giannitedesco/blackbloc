@@ -94,10 +94,9 @@ int cl_init(void)
 	return 1;
 }
 
-void clcmd_map(int s, char *arg)
+static int load_map(const char *arg)
 {
 	q2bsp_t tmp_map;
-
 	char buf[strlen(arg) + strlen("maps/.bsp") + 1];
 
 	snprintf(buf, sizeof(buf), "maps/%s.bsp", arg);
@@ -110,6 +109,12 @@ void clcmd_map(int s, char *arg)
 
 	q2bsp_free(map);
 	map = tmp_map;
+}
+
+void clcmd_map(int s, char *arg)
+{
+	if ( arg )
+		load_map(arg);
 }
 
 void cl_render(void)

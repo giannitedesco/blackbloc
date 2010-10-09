@@ -120,6 +120,7 @@ static struct cl_cmd command[]={
 	{clcmd_forwards, "+forwards", "Walk forwards"},
 	{clcmd_binds, "binds", "Show key bindings"},
 	{clcmd_map, "map", "Load map"},
+	{clcmd_textures, "textures", "Toggle textures"},
 	{clcmd_backwards, "+backwards", "Walk backwards"},
 	{clcmd_strafe_left, "+strafe_left", "Strafe left"},
 	{clcmd_strafe_right, "+strafe_right", "Strafe right"},
