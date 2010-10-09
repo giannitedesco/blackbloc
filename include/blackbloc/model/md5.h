@@ -115,8 +115,8 @@ struct anim_info_t
 /**
  * md5anim prototypes
  */
-//int CheckAnimValidity (const struct md5_model_t *mdl,
-//		       const struct md5_anim_t *anim);
+int CheckAnimValidity (const struct md5_model_t *mdl,
+		       const struct md5_anim_t *anim);
 int ReadMD5Anim (const char *filename, struct md5_anim_t *anim);
 void FreeAnim (struct md5_anim_t *anim);
 void InterpolateSkeletons (const struct md5_joint_t *skelA,

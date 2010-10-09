@@ -57,8 +57,7 @@ struct baseframe_joint_t {
  * Check if an animation can be used for a given model.  Model's
  * skeleton and animation's skeleton must match.
  */
-#if 0
-static int
+int
 CheckAnimValidity(const struct md5_model_t *mdl, const struct md5_anim_t *anim)
 {
 	int i;
@@ -81,7 +80,6 @@ CheckAnimValidity(const struct md5_model_t *mdl, const struct md5_anim_t *anim)
 
 	return 1;
 }
-#endif
 
 /**
  * Build skeleton for a given frame data.

@@ -393,18 +393,25 @@ void md5_load(const char *filename, const char *animfile)
 	if (animfile) {
 		if (!ReadMD5Anim(animfile, &md5anim)) {
 			FreeAnim(&md5anim);
-		} else {
-			animInfo.frame_rate = md5anim.frameRate;
-
-			/* Allocate memory for animated skeleton */
-			skeleton = (struct md5_joint_t *)
-			    malloc(sizeof(struct md5_joint_t) *
-				   md5anim.num_joints);
-
-			animated = 1;
+			goto out;
 		}
+
+		if ( !CheckAnimValidity(&md5file, &md5anim) ) {
+			FreeAnim(&md5anim);
+			goto out;
+		}
+
+		animInfo.frame_rate = md5anim.frameRate;
+
+		/* Allocate memory for animated skeleton */
+		skeleton = (struct md5_joint_t *)
+		    malloc(sizeof(struct md5_joint_t) *
+			   md5anim.num_joints);
+
+		animated = 1;
 	}
 
+out:
 	if (!animated)
 		printf("init: no animation loaded.\n");
 }
