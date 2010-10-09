@@ -285,11 +285,12 @@ static struct md5_mesh *do_mesh_load(const char *filename)
 	if ( NULL == mesh->name )
 		goto err;
 
+	con_printf("md5: mesh loaded: %s\n", mesh->name);
+
 	for(i = 0; i < mesh->num_meshes; i++) {
 		char buf[strlen(mesh->meshes[i].shader) + 13];
 		snprintf(buf, sizeof(buf), "d3/demo/%s.tga",
 				mesh->meshes[i].shader);
-		printf("%s\n", buf);
 		mesh->meshes[i].skin = tga_get_by_name(buf);
 	}
 

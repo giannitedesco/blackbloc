@@ -369,6 +369,8 @@ static struct md5_anim *do_mesh_load(const char *filename)
 	if ( NULL == anim->name )
 		goto err;
 
+	con_printf("md5: anim loaded: %s\n", anim->name);
+
 	anim->ref = 1;
 	list_add_tail(&anim->list, &md5_anims);
 	return anim;
