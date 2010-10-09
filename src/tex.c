@@ -101,6 +101,11 @@ void teximg_dtor_generic(texture_t tex)
 
 void tex_bind(struct _texture *tex)
 {
+	if ( NULL == tex ) {
+		glBindTexture(GL_TEXTURE_2D, 0);
+		return;
+	}
+
 	if ( !tex->t_uploaded ) {
 		unsigned int i;
 		glGenTextures(1, &tex->t_texnum);
