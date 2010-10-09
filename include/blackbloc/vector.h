@@ -51,6 +51,8 @@ typedef float vec3_t[3];
 typedef float vec4_t[4];
 typedef float vec5_t[5];
 
+typedef float quat4_t[4];
+
 /* W is a scale value but is mostly ignored, we use it to make
  * 4x4 matrices homogenous so that all affine transformations
  * are matrix multiplications. It is also here to make hardware
@@ -105,5 +107,16 @@ v_render(const vector_t v)
 }
 
 void v_angles(vector_t angles, vector_t forward, vector_t right, vector_t up);
+
+/**
+ * Quaternion prototypes
+ */
+void Quat_computeW (quat4_t q);
+void Quat_normalize (quat4_t q);
+void Quat_multQuat (const quat4_t qa, const quat4_t qb, quat4_t out);
+void Quat_multVec (const quat4_t q, const vec3_t v, quat4_t out);
+void Quat_rotatePoint (const quat4_t q, const vec3_t in, vec3_t out);
+float Quat_dotProduct (const quat4_t qa, const quat4_t qb);
+void Quat_slerp (const quat4_t qa, const quat4_t qb, float t, quat4_t out);
 
 #endif /* _VECTOR_HEADER_INCLUDED__ */

@@ -32,6 +32,7 @@ blackbloc_SOURCES = \
 	\
 	vector.c \
 	gfile.c \
+	quat.c \
 	main.c
 #	q2wal.c \
 #
