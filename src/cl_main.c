@@ -25,6 +25,7 @@ struct playerstate me={
 static q2bsp_t map;
 
 static md2_model_t soldier[6];
+static md5_model_t marine[6];
 static gfs_t gfs;
 
 int game_open(struct gfile *f, const char *name)
@@ -39,7 +40,7 @@ void game_close(struct gfile *f)
 
 int cl_init(void)
 {
-	int i;
+	unsigned int i;
 	gfs = gfs_open("data/game.gfs");
 	if ( gfs == NULL )
 		return 0;
@@ -76,8 +77,20 @@ int cl_init(void)
 		}
 	}
 
-	md5_load("d3/demo/models/md5/chars/marine.md5mesh",
-		"d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
+	for(i = 0; i < sizeof(marine)/sizeof(*marine); i++) {
+		marine[i] = md5_new("d3/demo/models/md5/chars/marine.md5mesh");
+		if ( marine[i] ) {
+			vector_t v;
+			v[Z] = 0;
+			v[Y] = 0;
+			v[Z] = 50 + 50 * i;
+			md5_animate(marine[i],
+					"d3/demo/models/md5/chars/marscity/"
+					"marscity_marine2_idle2.md5anim");
+			md5_spawn(marine[i], v);
+		}
+	}
+
 	return 1;
 }
 
@@ -101,15 +114,21 @@ void clcmd_map(int s, char *arg)
 
 void cl_render(void)
 {
-	int i;
+	unsigned int i;
 	if ( map )
 		q2bsp_render(map);
-	md5_render();
 	for(i = 0; i < sizeof(soldier)/sizeof(*soldier); i++) {
 		if ( !soldier[i] )
 			continue;
 		glPushMatrix();
 		md2_render(soldier[i]);
+		glPopMatrix();
+	}
+	for(i = 0; i < sizeof(marine)/sizeof(*marine); i++) {
+		if ( !marine[i] )
+			continue;
+		glPushMatrix();
+		md5_render(marine[i]);
 		glPopMatrix();
 	}
 }

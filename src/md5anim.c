@@ -33,7 +33,7 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/textreader.h>
 #include <blackbloc/vector.h>
-#include <blackbloc/client.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/model/md5.h>
 
 #include <stdio.h>
@@ -58,9 +58,9 @@ struct baseframe_joint_t {
  * skeleton and animation's skeleton must match.
  */
 int
-CheckAnimValidity(const struct md5_model_t *mdl, const struct md5_anim_t *anim)
+CheckAnimValidity(const struct md5_mesh *mdl, const struct md5_anim *anim)
 {
-	int i;
+	unsigned int i;
 
 	/* md5mesh and md5anim must have the same number of joints */
 	if (mdl->num_joints != anim->num_joints)
@@ -176,7 +176,7 @@ BuildFrameSkeleton(const struct joint_info_t *jointInfos,
 /**
  * Load an MD5 animation from file.
  */
-int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
+int ReadMD5Anim(const char *filename, struct md5_anim *anim)
 {
 	struct gfile f;
 	textreader_t txt;
@@ -184,10 +184,9 @@ int ReadMD5Anim(const char *filename, struct md5_anim_t *anim)
 	struct joint_info_t *jointInfos = NULL;
 	struct baseframe_joint_t *baseFrame = NULL;
 	float *animFrameData = NULL;
-	int version;
-	int numAnimatedComponents;
-	int frame_index;
-	int i, ret;
+	unsigned int version, numAnimatedComponents;
+	unsigned int i, frame_index;
+	int ret = 0;
 
 	if ( !game_open(&f, filename) ) {
 		con_printf("md5: error: couldn't open \"%s\"!\n", filename);
@@ -335,26 +334,63 @@ out_close:
 /**
  * Free resources allocated for the animation.
  */
-void FreeAnim(struct md5_anim_t *anim)
+void FreeAnim(struct md5_anim *anim)
 {
-	int i;
+	unsigned int i;
 
 	if (anim->skelFrames) {
 		for (i = 0; i < anim->num_frames; ++i) {
-			if (anim->skelFrames[i]) {
-				free(anim->skelFrames[i]);
-				anim->skelFrames[i] = NULL;
-			}
+			free(anim->skelFrames[i]);
 		}
-
 		free(anim->skelFrames);
-		anim->skelFrames = NULL;
 	}
 
-	if (anim->bboxes) {
-		free(anim->bboxes);
-		anim->bboxes = NULL;
+	free(anim->bboxes);
+	free(anim->name);
+	list_del(&anim->list);
+	free(anim);
+}
+
+static LIST_HEAD(md5_anims);
+
+static struct md5_anim *do_mesh_load(const char *filename)
+{
+	struct md5_anim *anim;
+
+	anim = calloc(1, sizeof(*anim));
+	if ( NULL == anim )
+		return NULL;
+
+	/* Load MD5 model file */
+	if (!ReadMD5Anim(filename, anim))
+		goto err;
+
+	anim->name = strdup(filename);
+	if ( NULL == anim->name )
+		goto err;
+
+	anim->ref = 1;
+	list_add_tail(&anim->list, &md5_anims);
+	return anim;
+err:
+	FreeAnim(anim);
+	free(anim->name);
+	free(anim);
+	return NULL;
+}
+
+struct md5_anim *md5_anim_get_by_name(const char *filename)
+{
+	struct md5_anim  *anim;
+
+	list_for_each_entry(anim, &md5_anims, list) {
+		if ( !strcmp(filename, anim->name) ) {
+			anim->ref++;
+			return anim;
+		}
 	}
+
+	return do_mesh_load(filename);
 }
 
 /**
@@ -385,5 +421,15 @@ InterpolateSkeletons(const struct md5_joint_t *skelA,
 		/* Spherical linear interpolation for orientation */
 		Quat_slerp(skelA[i].orient, skelB[i].orient, interp,
 			   out[i].orient);
+	}
+}
+
+void md5_anim_put(struct md5_anim *anim)
+{
+	if ( anim ) {
+		assert(anim->ref);
+		if ( 0 == --anim->ref ) {
+			FreeAnim(anim);
+		}
 	}
 }

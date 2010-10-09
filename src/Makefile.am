@@ -27,6 +27,7 @@ blackbloc_SOURCES = \
 	md2.c \
 	md5anim.c \
 	md5mesh.c \
+	md5_render.c \
 	\
 	q2bsp.c \
 	\

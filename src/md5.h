@@ -43,48 +43,66 @@ struct md5_bbox_t {
 };
 
 /* MD5 mesh */
-struct md5_mesh_t {
+struct md5_mesh_part {
 	struct md5_vertex_t *vertices;
 	struct md5_triangle_t *triangles;
 	struct md5_weight_t *weights;
 
-	int num_verts;
-	int num_tris;
-	int num_weights;
+	unsigned int num_verts;
+	unsigned int num_tris;
+	unsigned int num_weights;
 
 	char shader[256];
+	texture_t skin;
 };
 
 /* MD5 model structure */
-struct md5_model_t {
+struct md5_mesh {
 	struct md5_joint_t *baseSkel;
-	struct md5_mesh_t *meshes;
+	struct md5_mesh_part *meshes;
 
-	int num_joints;
-	int num_meshes;
+	unsigned int num_joints;
+	unsigned int num_meshes;
 
-	int animated;
-	struct md5_joint_t *skeleton;
+	unsigned int max_verts;
+	unsigned int max_tris;
 
+	char *name;
+	unsigned int ref;
 	struct list_head list;
 };
 
 /* Animation data */
-struct md5_anim_t {
-	int num_frames;
-	int num_joints;
-	int frameRate;
+struct md5_anim {
+	unsigned int num_frames;
+	unsigned int num_joints;
+	unsigned int frameRate;
 
 	struct md5_joint_t **skelFrames;
 	struct md5_bbox_t *bboxes;
 
+	char *name;
+	unsigned int ref;
 	struct list_head list;
 };
 
-int CheckAnimValidity (const struct md5_model_t *mdl,
-					 const struct md5_anim_t *anim);
-int ReadMD5Anim (const char *filename, struct md5_anim_t *anim);
-void FreeAnim (struct md5_anim_t *anim);
+struct _md5_model {
+	struct entity ent;
+	struct md5_mesh *mesh;
+	struct md5_anim *anim;
+	struct md5_joint_t *skeleton;
+};
+
+struct md5_mesh *md5_mesh_get_by_name(const char *name);
+void md5_mesh_put(struct md5_mesh *mesh);
+
+struct md5_anim *md5_anim_get_by_name(const char *name);
+void md5_anim_put(struct md5_anim *anim);
+
+int CheckAnimValidity (const struct md5_mesh *mdl,
+					 const struct md5_anim *anim);
+int ReadMD5Anim (const char *filename, struct md5_anim *anim);
+void FreeAnim (struct md5_anim *anim);
 void InterpolateSkeletons (const struct md5_joint_t *skelA,
 				 const struct md5_joint_t *skelB,
 				 int num_joints, float interp,

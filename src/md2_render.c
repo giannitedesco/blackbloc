@@ -204,10 +204,8 @@ void md2_render(md2_model_t m)
 
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 
-	if ( m->skin ) {
-		tex_bind(m->skin);
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	}
+	tex_bind(m->skin);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	while(1) {
 		count = *order++;
