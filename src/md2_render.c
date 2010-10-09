@@ -12,26 +12,21 @@
 #include <blackbloc/img/pcx.h>
 #include <blackbloc/model/md2.h>
 
-struct model_ops md2_ops={
-	.type_name = "md2",
-	.type_desc = "QuakeII MD2 Model",
-	.load = md2_load,
-	.extents = (proc_mdl_extents)md2_extents,
-	.num_skins = (proc_mdl_numskins)md2_num_skins,
-	.render = md2_render,
-	.skin_by_index = md2_skin,
-};
+#include "md2.h"
 
 static vector_t s_lerped[MAX_VERTS];
 
-void md2_skin(struct cl_ent *ent, int idx)
+void md2_skin(md2_model_t md2, int idx)
 {
-	struct md2 *m = ent->s.model;
-	const char *str = m->skins;
+	const char *str = md2->mesh->skins;
+
+	if ( md2->skin && md2->skinnum == idx )
+		return;
 
 	str += (idx * MAX_SKINNAME);
 
-	ent->skin = pcx_get_by_name(str);
+	md2->skinnum = idx;
+	md2->skin = pcx_get_by_name(str);
 }
 
 static void md2_bbox(vector_t org, vector_t rot, vector_t mins, vector_t maxs)
@@ -60,33 +55,105 @@ static void md2_bbox(vector_t org, vector_t rot, vector_t mins, vector_t maxs)
 	}
 }
 
-void md2_render(struct cl_ent *ent)
+static void md2_extents(const struct md2_mesh *m, aframe_t frame,
+			vector_t mins, vector_t maxs)
 {
-	struct md2 *m = ent->s.model;
-	int *order = m->glcmds;
-	int frame, oldframe;
+	vector_t tmp;
+	uint32_t i, j;
+
+	mins[X] = mins[Y] = mins[Z] = 999999.0f;
+	maxs[X] = maxs[Y] = maxs[Z] = -99999.0f;
+
+	for(i=0; i<m->num_xyz; i++) {
+		struct md2_frame *f = m->frame + frame;
+
+		tmp[X] = f->verts[i].v[1] * f->scale[0] + f->translate[0];
+		tmp[Y] = f->verts[i].v[2] * f->scale[1] + f->translate[1];
+		tmp[Z] = f->verts[i].v[0] * f->scale[2] + f->translate[2];
+
+		for(j=0; j<3; j++) {
+			if ( tmp[j] < mins[j] )
+				mins[j] = tmp[j];
+			if ( tmp[j] > maxs[j] )
+				maxs[j] = tmp[j];
+		}
+
+	}
+}
+
+md2_model_t md2_new(const char *name)
+{
+	struct md2_mesh *mesh;
+	struct _md2_model *md2;
+
+	md2 = calloc(1, sizeof(*md2));
+	if ( NULL == md2 )
+		return NULL;
+
+	mesh = md2_mesh_get_by_name(name);
+	if ( NULL == mesh ) {
+		free(md2);
+		return NULL;
+	}
+
+	md2->mesh = mesh;
+
+	return md2;
+}
+
+void md2_spawn(md2_model_t md2, vector_t origin)
+{
+	v_copy(md2->ent.origin, origin);
+	v_copy(md2->ent.oldorigin, origin);
+}
+
+void md2_animate(md2_model_t md2, aframe_t begin, aframe_t end)
+{
+	md2->start_frame = begin;
+	md2->anim_frames = end - begin;
+	md2->old_frame = 0;
+	md2->cur_frame = 0;
+
+	/* Recalculate extents */
+	md2_extents(md2->mesh, md2->start_frame,
+				md2->ent.mins, md2->ent.maxs);
+
+	/* don't want to interpolate between different animation
+	 * sequences, otherwise we could get weird effects */
+	md2->last_rendered = client_frame;
+}
+
+void md2_free(md2_model_t md2)
+{
+	md2_mesh_put(md2->mesh);
+	tex_put(md2->skin);
+	free(md2);
+}
+
+void md2_render(md2_model_t m)
+{
+	const struct md2_mesh *mesh = m->mesh;
+	int *order = mesh->glcmds;
+	int frame, old_frame;
 	vector_t org, rot;
 	int count;
 	uint32_t i;
 
-	if ( !m )
-		return;
-
 	/* Figure out which animation frame we are on */
-	if ( ent->last_rendered < client_frame && ent->s.anim_frames ) {
-		int diff = client_frame - ent->last_rendered;
-		ent->s.frame += diff;
-		ent->oldframe = ent->s.frame - 1;
-		ent->s.frame %= ent->s.anim_frames;
-		ent->oldframe %= ent->s.anim_frames;
+	if ( m->last_rendered < client_frame && m->anim_frames ) {
+		int diff = client_frame - m->last_rendered;
+		m->cur_frame += diff;
+		m->old_frame = m->cur_frame - 1;
+		m->cur_frame %= m->anim_frames;
+		m->old_frame %= m->anim_frames;
 
-		md2_extents(m, ent->s.start_frame + ent->s.frame,
-				ent->s.mins, ent->s.maxs);
+		md2_extents(mesh, m->start_frame + m->cur_frame,
+				m->ent.mins, m->ent.maxs);
 	}
 
-	ent->last_rendered = client_frame;
-	frame = ent->s.start_frame + ent->s.frame;
-	oldframe = ent->s.start_frame + ent->oldframe;
+	m->last_rendered = client_frame;
+	frame = m->start_frame + m->cur_frame;
+	old_frame = m->start_frame + m->old_frame;
 
 	/* Clamp interpolation */
 	if ( lerp > 1 )
@@ -94,18 +161,18 @@ void md2_render(struct cl_ent *ent)
 
 	/* Interpolate origin */
 	v_zero(org);
-	v_sub(org, ent->s.origin, ent->s.oldorigin);
+	v_sub(org, m->ent.origin, m->ent.oldorigin);
 	v_scale(org, lerp);
-	v_add(org, org, ent->s.oldorigin);
+	v_add(org, org, m->ent.oldorigin);
 
 	/* Interpolate angles */
-	v_sub(rot, ent->s.angles, ent->s.oldangles);
+	v_sub(rot, m->ent.angles, m->ent.oldangles);
 	v_scale(rot, lerp);
-	v_add(rot, rot, ent->s.oldangles);
+	v_add(rot, rot, m->ent.oldangles);
 
-	/* Copy oldframe in to buffer */
-	for(i=0; i<m->num_xyz; i++) {
-		struct md2_frame *f = m->frame + oldframe;
+	/* Copy old_frame in to buffer */
+	for(i = 0; i < mesh->num_xyz; i++) {
+		struct md2_frame *f = mesh->frame + old_frame;
 
 		s_lerped[i][X] = f->verts[i].v[1] * f->scale[0] + f->translate[0];
 		s_lerped[i][Y] = f->verts[i].v[2] * f->scale[1] + f->translate[1];
@@ -113,8 +180,8 @@ void md2_render(struct cl_ent *ent)
 	}
 
 	/* Interpolate between that and this frame */
-	for(i=0; i<m->num_xyz; i++) {
-		struct md2_frame *f = m->frame + frame;
+	for(i = 0; i < mesh->num_xyz; i++) {
+		struct md2_frame *f = mesh->frame + frame;
 		vector_t v;
 
 		v[X] = s_lerped[i][X] - (f->verts[i].v[1] * f->scale[0] + f->translate[0]);
@@ -125,7 +192,7 @@ void md2_render(struct cl_ent *ent)
 		v_sub(s_lerped[i], s_lerped[i], v);
 	}
 
-	md2_bbox(org, rot, ent->s.mins, ent->s.maxs);
+	md2_bbox(org, rot, m->ent.mins, m->ent.maxs);
 
 	glTranslatef(org[X], org[Y], org[Z]);
 	glRotatef(rot[X], 1, 0, 0);
@@ -135,7 +202,7 @@ void md2_render(struct cl_ent *ent)
 	/* Backwards winding order in glcmds */
 	glCullFace(GL_FRONT);
 
-	tex_bind(ent->skin);
+	tex_bind(m->skin);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 

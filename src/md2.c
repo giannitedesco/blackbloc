@@ -8,48 +8,14 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/client.h>
 #include <blackbloc/gfile.h>
+#include <blackbloc/tex.h>
 #include <blackbloc/model/md2.h>
 
-struct model_ops md2_sv_ops={
-	.load = md2_load,
-	.extents = (proc_mdl_extents)md2_extents,
-	.num_skins = (proc_mdl_numskins)md2_num_skins,
-	.type_name = "md2",
-	.type_desc = "QuakeII MD2 Model",
-};
+#include "md2.h"
 
-int md2_num_skins(struct md2 *m)
-{
-	return m->num_skins;
-}
+static LIST_HEAD(md2_meshes);
 
-void md2_extents(struct md2 *m, aframe_t frame,
-			vector_t mins, vector_t maxs)
-{
-	vector_t tmp;
-	uint32_t i, j;
-
-	mins[X] = mins[Y] = mins[Z] = 999999.0f;
-	maxs[X] = maxs[Y] = maxs[Z] = -99999.0f;
-
-	for(i=0; i<m->num_xyz; i++) {
-		struct md2_frame *f = m->frame + frame;
-
-		tmp[X] = f->verts[i].v[1] * f->scale[0] + f->translate[0];
-		tmp[Y] = f->verts[i].v[2] * f->scale[1] + f->translate[1];
-		tmp[Z] = f->verts[i].v[0] * f->scale[2] + f->translate[2];
-
-		for(j=0; j<3; j++) {
-			if ( tmp[j] < mins[j] )
-				mins[j] = tmp[j];
-			if ( tmp[j] > maxs[j] )
-				maxs[j] = tmp[j];
-		}
-
-	}
-}
-
-void *md2_load(const char *name)
+static struct md2_mesh *md2_mesh_load(const char *name)
 {
 	struct md2_mdl hdr;
 	uint32_t *tmp;
@@ -57,27 +23,27 @@ void *md2_load(const char *name)
 	uint32_t i;
 	size_t alias_len;
 	const struct md2_aliasframe *f;
-	struct md2 *m;
+	struct md2_mesh *mesh;
 
-	m = calloc(1, sizeof(*m));
-	if ( m == NULL ) {
+	mesh = calloc(1, sizeof(*mesh));
+	if ( mesh == NULL ) {
 		con_printf("md2: %s: malloc(): %s\n", name, get_err());
 		return NULL;
 	}
 
 	/* Open the model file */
-	if ( !game_open(&m->f, name) ) {
+	if ( !game_open(&mesh->f, name) ) {
 		con_printf("md2: %s: no such file\n", name);
 		goto err;
 	}
 
-	if ( sizeof(hdr) > m->f.f_len ) {
+	if ( sizeof(hdr) > mesh->f.f_len ) {
 		con_printf("md2: %s: too small for header\n", name);
 		goto err_close;
 	}
 
 	/* byteswap the header (its all ints) */
-	memcpy(&hdr, m->f.f_ptr, sizeof(hdr));
+	memcpy(&hdr, mesh->f.f_ptr, sizeof(hdr));
 	tmp = (uint32_t *)&hdr;
 	for(i = 0; i < sizeof(hdr) / 4; i++) {
 		*tmp = le_32(*tmp);
@@ -113,64 +79,64 @@ void *md2_load(const char *name)
 	}
 
 	/* Grab necessary header values */
-	m->num_frames = hdr.num_frames;
-	m->num_xyz = hdr.num_xyz;
-	m->num_glcmds = hdr.num_glcmds;
-	m->num_skins = hdr.num_skins;
-	m->skins = m->f.f_ptr + hdr.ofs_skins;
+	mesh->num_frames = hdr.num_frames;
+	mesh->num_xyz = hdr.num_xyz;
+	mesh->num_glcmds = hdr.num_glcmds;
+	mesh->num_skins = hdr.num_skins;
+	mesh->skins = mesh->f.f_ptr + hdr.ofs_skins;
 
-	if ( hdr.ofs_skins + (hdr.num_skins * MAX_SKINNAME) > m->f.f_len ) {
+	if ( hdr.ofs_skins + (hdr.num_skins * MAX_SKINNAME) > mesh->f.f_len ) {
 		con_printf("md2: %s: too small for skins\n", name);
 		goto err_close;
 	}
 
 	alias_len = hdr.num_frames *
 			(sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz);
-	if ( hdr.ofs_frames + alias_len > m->f.f_len ) {
+	if ( hdr.ofs_frames + alias_len > mesh->f.f_len ) {
 		con_printf("md2: %s: too small for frames\n", name);
 		goto err_close;
 	}
 
 	/* Load the frames */
-	m->frame = malloc(hdr.num_frames * sizeof(*m->frame));
-	if ( m->frame == NULL ) {
+	mesh->frame = malloc(hdr.num_frames * sizeof(*mesh->frame));
+	if ( mesh->frame == NULL ) {
 		con_printf("md2: %s: out of memory for frames\n", name);
 		goto err_close;
 	}
 
 	/* These values all need byteswapping */
-	f = m->f.f_ptr + hdr.ofs_frames;
+	f = mesh->f.f_ptr + hdr.ofs_frames;
 	for(i = 0; i < hdr.num_frames; i++) {
-		m->frame[i].scale[0] = le_float(f->scale[1]);
-		m->frame[i].scale[1] = le_float(f->scale[2]);
-		m->frame[i].scale[2] = le_float(f->scale[0]);
-		m->frame[i].translate[0] = le_float(f->translate[1]);
-		m->frame[i].translate[1] = le_float(f->translate[2])+26;
-		m->frame[i].translate[2] = le_float(f->translate[0]);
-		memcpy(m->frame[i].name, f->name, sizeof(m->frame[i].name));
-		m->frame[i].verts = f->verts;
+		mesh->frame[i].scale[0] = le_float(f->scale[1]);
+		mesh->frame[i].scale[1] = le_float(f->scale[2]);
+		mesh->frame[i].scale[2] = le_float(f->scale[0]);
+		mesh->frame[i].translate[0] = le_float(f->translate[1]);
+		mesh->frame[i].translate[1] = le_float(f->translate[2])+26;
+		mesh->frame[i].translate[2] = le_float(f->translate[0]);
+		memcpy(mesh->frame[i].name, f->name, sizeof(mesh->frame[i].name));
+		mesh->frame[i].verts = f->verts;
 		f = ((void *)f) + sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz;
 	}
 
 	/* Load the glcmds */
 	if ( hdr.ofs_glcmds + hdr.num_glcmds *
-					sizeof(*m->glcmds) > m->f.f_len ) {
+					sizeof(*mesh->glcmds) > mesh->f.f_len ) {
 		con_printf("md2: %s: too small for glcmds\n", name);
 		goto err_free_frames;
 	}
 
-	m->glcmds = malloc(m->num_glcmds * sizeof(*m->glcmds));
-	if ( m->glcmds == NULL ) {
+	mesh->glcmds = malloc(mesh->num_glcmds * sizeof(*mesh->glcmds));
+	if ( mesh->glcmds == NULL ) {
 		con_printf("md2: %s: out of memory for GL commands\n", name);
 		goto err_free_frames;
 	}
 
-	tmp2 = m->f.f_ptr + hdr.ofs_glcmds;
+	tmp2 = mesh->f.f_ptr + hdr.ofs_glcmds;
 	for(i = 0; i < hdr.num_glcmds; i++) {
-		m->glcmds[i] = le_32(tmp2[i]);
+		mesh->glcmds[i] = le_32(tmp2[i]);
 	}
 
-	if ( m->glcmds[hdr.num_glcmds-1] != 0 ) {
+	if ( mesh->glcmds[hdr.num_glcmds-1] != 0 ) {
 		con_printf("md2: %s: last GL command is not zero\n", name);
 		goto err_free_glcmds;
 	}
@@ -179,15 +145,43 @@ void *md2_load(const char *name)
 	con_printf("md2: %s (%i frames / %i verts)\n",
 		name, hdr.num_frames, hdr.num_xyz);
 
-	return m;
+	mesh->ref = 1;
+	list_add_tail(&mesh->list, &md2_meshes);
+	return mesh;
 
 err_free_glcmds:
-	free(m->glcmds);
+	free(mesh->glcmds);
 err_free_frames:
-	free(m->frame);
+	free(mesh->frame);
 err_close:
-	game_close(&m->f);
+	game_close(&mesh->f);
 err:
-	free(m);
+	free(mesh);
 	return NULL;
+}
+
+struct md2_mesh *md2_mesh_get_by_name(const char *name)
+{
+	struct md2_mesh *mesh;
+
+	list_for_each_entry(mesh, &md2_meshes, list) {
+		if ( !strcmp(name, mesh->f.f_name) ) {
+			assert(mesh->ref);
+			mesh->ref++;
+			return mesh;
+		}
+	}
+
+	return md2_mesh_load(name);
+}
+
+void md2_mesh_put(struct md2_mesh *mesh)
+{
+	assert(mesh->ref);
+	if ( --mesh->ref == 0 ) {
+		free(mesh->glcmds);
+		free(mesh->frame);
+		game_close(&mesh->f);
+		free(mesh);
+	}
 }

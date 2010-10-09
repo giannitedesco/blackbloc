@@ -7,12 +7,10 @@
 *
 * TODO
 *  o Use multi-texture rendering to improve performance
-*  o Use higher res textures with shaders
 *  o Frustum / Bounding Box culling
 *  o Simple gravity / physics model
 *  o Load submodels
 *  o Load portals
-*  o Lots of tidying up and bugfixes
 */
 #include <stdio.h>
 
@@ -928,7 +926,7 @@ static void q2bsp_surfrender(struct _q2bsp *map, struct bsp_msurface *s)
 		glEnd();
 
 		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 	}
 #endif

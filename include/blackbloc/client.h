@@ -59,42 +59,4 @@ void cl_move(void);
 void cl_viewangles(vector_t angles);
 void cl_origin(vector_t origin);
 
-
-/* model wrappers */
-static inline void
-cl_model_render(struct cl_ent *e)
-{
-	e->s.model_ops->render(e);
-}
-
-static inline void
-cl_model_load(struct cl_ent *e, const char *n)
-{
-	e->s.model = e->s.model_ops->load(n);
-}
-
-static inline void
-cl_model_skin(struct cl_ent *e, int n)
-{
-	e->s.skinnum = n;
-	e->s.model_ops->skin_by_index(e, n);
-}
-
-static inline void
-cl_model_animate(struct cl_ent *e, aframe_t f1, aframe_t f2)
-{
-	e->s.start_frame = f1;
-	e->s.anim_frames = f2 - f1;
-	e->oldframe = 0;
-	e->s.frame = 0;
-
-	/* Recalculate extents */
-	e->s.model_ops->extents(e->s.model, e->s.start_frame,
-				e->s.mins, e->s.maxs);
-
-	/* don't want to interpolate between different animation
-	 * sequences, otherwise we could get weird effects */
-	e->last_rendered = client_frame;
-}
-
 #endif /* __CLIENT_HEADER_INCLUDED__ */

@@ -24,7 +24,7 @@ struct playerstate me={
 
 static q2bsp_t map;
 
-static struct cl_ent ent;
+static md2_model_t soldier;
 static gfs_t gfs;
 
 int game_open(struct gfile *f, const char *name)
@@ -62,14 +62,16 @@ int cl_init(void)
 	if ( !hud_init() )
 		return 0;
 
-	ent.s.model_ops = &md2_ops;
-	ent.s.origin[X] = 500;
-	ent.s.origin[Y] = 450;
-	ent.s.origin[Z] = 1200;
-	v_copy(ent.s.oldorigin, ent.s.origin);
-	cl_model_load(&ent, "models/monsters/soldier/tris.md2");
-	cl_model_skin(&ent, 0);
-	cl_model_animate(&ent, 146, 214);
+	soldier = md2_new("models/monsters/soldier/tris.md2");
+	if ( soldier ) {
+		vector_t v;
+		v[X] = 50;
+		v[Y] = 0;
+		v[Z] = 0;
+		md2_skin(soldier, 0);
+		md2_animate(soldier, 146, 214);
+		md2_spawn(soldier, v);
+	}
 
 	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
 		"data/d3/demo/models/md5/chars/marscity/marscity_marine2_idle2.md5anim");
@@ -99,7 +101,8 @@ void cl_render(void)
 	if ( map )
 		q2bsp_render(map);
 	md5_render();
-	//cl_model_render(&ent);
+	if ( soldier )
+		md2_render(soldier);
 }
 
 void cl_frame(void)
