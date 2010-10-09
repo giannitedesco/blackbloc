@@ -469,11 +469,7 @@ void md5_load(const char *filename, const char *animfile)
 		if (!ReadMD5Anim(animfile, &md5anim)) {
 			FreeAnim(&md5anim);
 		} else {
-			animInfo.curr_frame = 0;
-			animInfo.next_frame = 1;
-
-			animInfo.last_time = 0;
-			animInfo.max_time = md5anim.frameRate / 10.0 /* HZ */;
+			animInfo.frame_rate = md5anim.frameRate;
 
 			/* Allocate memory for animated skeleton */
 			skeleton = (struct md5_joint_t *)
@@ -503,51 +499,33 @@ void cleanup(void)
 }
 #endif
 
-/**
- * Perform animation related computations.  Calculate the current and
- * next frames, given a delta time.
- */
 static void Animate(const struct md5_anim_t *anim, struct anim_info_t *animInfo)
 {
-	double dt;
-	int maxFrames = anim->num_frames - 1;
+	double time, the_lerp;
+	int frame, cur, next;
 
-	dt = client_frame - animInfo->last_time;
-	dt += lerp;
+	time = (client_frame + lerp) / 10.0;
+	frame = floor(time * animInfo->frame_rate);
+	the_lerp = (time * animInfo->frame_rate) -
+			floor(time * animInfo->frame_rate);
 
-	dt *= animInfo->max_time;
+	cur = frame % anim->num_frames;
+	next = (frame + 1) % anim->num_frames;
 
-	/* move to next frame */
-	if ( animInfo->last_time != client_frame ) {
-		animInfo->curr_frame += dt;
-		animInfo->next_frame += dt;
-		animInfo->last_time = (double)client_frame + lerp;
-
-		if (animInfo->curr_frame > maxFrames)
-			animInfo->curr_frame = 0;
-
-		if (animInfo->next_frame > maxFrames)
-			animInfo->next_frame = 0;
-	}
+	InterpolateSkeletons(md5anim.skelFrames[cur],
+			     md5anim.skelFrames[next],
+			     md5anim.num_joints,
+			     the_lerp,
+			     skeleton);
 }
 void md5_render(void)
 {
 	int i;
-	static unsigned int last_frame = 0;
 	texture_t skin;
 
 	skin = tga_get_by_name("d3/demo/models/characters/male_npc/marine/marine.tga");
 	if (animated) {
-		/* Calculate current and next frames */
-		if ( client_frame > last_frame )
-			Animate(&md5anim, &animInfo);
-
-		/* Interpolate skeletons between two frames */
-		InterpolateSkeletons(md5anim.skelFrames[animInfo.curr_frame],
-				     md5anim.skelFrames[animInfo.next_frame],
-				     md5anim.num_joints,
-				     lerp,
-				     skeleton);
+		Animate(&md5anim, &animInfo);
 	} else {
 		/* No animation, use bind-pose skeleton */
 		skeleton = md5file.baseSkel;

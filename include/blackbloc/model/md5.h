@@ -112,11 +112,7 @@ struct md5_anim_t
 /* Animation info */
 struct anim_info_t
 {
-  int curr_frame;
-  int next_frame;
-
-  double last_time;
-  double max_time;
+  double frame_rate;
 };
 
 /**
