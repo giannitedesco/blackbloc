@@ -33,11 +33,11 @@
 #include <blackbloc/blackbloc.h>
 #include <blackbloc/vector.h>
 #include <blackbloc/client.h>
-#include <stdio.h>
-#include <math.h>
-#include <assert.h>
-
 #include <blackbloc/model/md5.h>
+
+#include <stdio.h>
+
+#include "md5.h"
 
 /* Joint info */
 struct joint_info_t {

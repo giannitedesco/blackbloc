@@ -37,24 +37,41 @@
 #include <blackbloc/img/tga.h>
 #include <blackbloc/model/md5.h>
 
-#include <math.h>
+#include "md5.h"
+
 #include <stdio.h>
 
-static struct md5_model_t md5file;
-static struct md5_anim_t md5anim;
+struct md5_model_t md5file;
+struct md5_anim_t md5anim;
 
-static int animated;
-
-static struct md5_joint_t *skeleton;
-static struct anim_info_t animInfo;
-
-/* vertex array related stuff */
+/* OpenGL vertex array related stuff */
 static int max_verts;
 static int max_tris;
-
 static vec3_t *vertexArray;
 static vec2_t *texArray;
 static GLuint *vertexIndices;
+
+static void AllocVertexArrays(void)
+{
+	if ( NULL == vertexArray )
+		vertexArray = malloc(sizeof(vec3_t) * max_verts);
+	if ( NULL == texArray )
+		texArray = malloc(sizeof(vec2_t) * max_verts);
+	if ( NULL == vertexIndices )
+		vertexIndices = malloc(sizeof(GLuint) * max_tris * 3);
+}
+
+static void FreeVertexArrays(void)
+{
+	free(vertexArray);
+	vertexArray = NULL;
+
+	free(vertexIndices);
+	vertexIndices = NULL;
+
+	free(texArray);
+	texArray = NULL;
+}
 
 /**
  * Load an MD5 model from file.
@@ -161,8 +178,10 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 							   * mesh->num_verts);
 					}
 
-					if (mesh->num_verts > max_verts)
+					if (mesh->num_verts > max_verts) {
+						FreeVertexArrays();
 						max_verts = mesh->num_verts;
+					}
 				} else
 				    if (sscanf
 					(buff, " numtris %d",
@@ -177,8 +196,10 @@ static int ReadMD5Model(const char *filename, struct md5_model_t *mdl)
 							   mesh->num_tris);
 					}
 
-					if (mesh->num_tris > max_tris)
+					if (mesh->num_tris > max_tris) {
+						FreeVertexArrays();
 						max_tris = mesh->num_tris;
+					}
 				} else
 				    if (sscanf
 					(buff, " numweights %d",
@@ -331,28 +352,6 @@ PrepareMesh(const struct md5_mesh_t *mesh, const struct md5_joint_t *skeleton)
 	}
 }
 
-static void AllocVertexArrays(void)
-{
-	vertexArray = (vec3_t *) malloc(sizeof(vec3_t) * max_verts);
-	texArray = malloc(sizeof(vec2_t) * max_verts);
-	vertexIndices = (GLuint *) malloc(sizeof(GLuint) * max_tris * 3);
-}
-
-#if 0
-static void FreeVertexArrays(void)
-{
-	if (vertexArray) {
-		free(vertexArray);
-		vertexArray = NULL;
-	}
-
-	if (vertexIndices) {
-		free(vertexIndices);
-		vertexIndices = NULL;
-	}
-}
-#endif
-
 /**
  * Draw the skeleton as lines and points (for joints).
  */
@@ -387,8 +386,6 @@ void md5_load(const char *filename, const char *animfile)
 	if (!ReadMD5Model(filename, &md5file))
 		exit(EXIT_FAILURE);
 
-	AllocVertexArrays();
-
 	/* Load MD5 animation file */
 	if (animfile) {
 		if (!ReadMD5Anim(animfile, &md5anim)) {
@@ -401,19 +398,20 @@ void md5_load(const char *filename, const char *animfile)
 			goto out;
 		}
 
-		animInfo.frame_rate = md5anim.frameRate;
-
 		/* Allocate memory for animated skeleton */
-		skeleton = (struct md5_joint_t *)
-		    malloc(sizeof(struct md5_joint_t) *
-			   md5anim.num_joints);
-
-		animated = 1;
+		md5file.skeleton = malloc(sizeof(struct md5_joint_t) *
+						md5anim.num_joints);
+		md5file.animated = 1;
 	}
 
 out:
-	if (!animated)
+	if (!md5file.animated) {
+		/* No animation, use bind-pose skeleton */
 		printf("init: no animation loaded.\n");
+		md5file.skeleton = md5file.baseSkel;
+	}
+
+	AllocVertexArrays();
 }
 
 #if 0
@@ -431,36 +429,34 @@ void cleanup(void)
 }
 #endif
 
-static void Animate(const struct md5_anim_t *anim, struct anim_info_t *animInfo)
+static void Animate(const struct md5_anim_t *anim)
 {
 	double time, the_lerp;
 	int frame, cur, next;
 
 	time = (client_frame + lerp) / 10.0;
-	frame = floor(time * animInfo->frame_rate);
-	the_lerp = (time * animInfo->frame_rate) -
-			floor(time * animInfo->frame_rate);
+	frame = floor(time * anim->frameRate);
+	the_lerp = (time * anim->frameRate) -
+			floor(time * anim->frameRate);
 
 	cur = frame % anim->num_frames;
 	next = (frame + 1) % anim->num_frames;
 
 	InterpolateSkeletons(md5anim.skelFrames[cur],
-			     md5anim.skelFrames[next],
-			     md5anim.num_joints,
-			     the_lerp,
-			     skeleton);
+				md5anim.skelFrames[next],
+				md5anim.num_joints,
+				the_lerp,
+				md5file.skeleton);
 }
+
 void md5_render(void)
 {
 	int i;
 	texture_t skin;
 
 	skin = tga_get_by_name("d3/demo/models/characters/male_npc/marine/marine.tga");
-	if (animated) {
-		Animate(&md5anim, &animInfo);
-	} else {
-		/* No animation, use bind-pose skeleton */
-		skeleton = md5file.baseSkel;
+	if (md5file.animated) {
+		Animate(&md5anim);
 	}
 
 	/* Draw skeleton */
@@ -476,13 +472,13 @@ void md5_render(void)
 
 	/* Draw each mesh of the model */
 	for (i = 0; i < md5file.num_meshes; ++i) {
-		PrepareMesh(&md5file.meshes[i], skeleton);
+		PrepareMesh(&md5file.meshes[i], md5file.skeleton);
 
 		glVertexPointer(3, GL_FLOAT, 0, vertexArray);
 		glTexCoordPointer(2, GL_FLOAT, 0, texArray);
 
 		glDrawElements(GL_TRIANGLES, md5file.meshes[i].num_tris * 3,
-			       GL_UNSIGNED_INT, vertexIndices);
+				GL_UNSIGNED_INT, vertexIndices);
 	}
 
 	glDisableClientState(GL_VERTEX_ARRAY);

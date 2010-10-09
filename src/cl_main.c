@@ -67,7 +67,7 @@ int cl_init(void)
 		soldier[i] = md2_new("models/monsters/soldier/tris.md2");
 		if ( soldier[i] ) {
 			vector_t v;
-			v[X] = 50 + 50 * i;
+			v[X] = 50 + 30 * i;
 			v[Y] = 0;
 			v[Z] = 0;
 			md2_skin(soldier[i], i);
