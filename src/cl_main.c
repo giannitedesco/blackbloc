@@ -24,7 +24,7 @@ struct playerstate me={
 
 static q2bsp_t map;
 
-static md2_model_t soldier;
+static md2_model_t soldier[6];
 static gfs_t gfs;
 
 int game_open(struct gfile *f, const char *name)
@@ -39,6 +39,7 @@ void game_close(struct gfile *f)
 
 int cl_init(void)
 {
+	int i;
 	gfs = gfs_open("data/game.gfs");
 	if ( gfs == NULL )
 		return 0;
@@ -62,15 +63,17 @@ int cl_init(void)
 	if ( !hud_init() )
 		return 0;
 
-	soldier = md2_new("models/monsters/soldier/tris.md2");
-	if ( soldier ) {
-		vector_t v;
-		v[X] = 50;
-		v[Y] = 0;
-		v[Z] = 0;
-		md2_skin(soldier, 0);
-		md2_animate(soldier, 146, 214);
-		md2_spawn(soldier, v);
+	for(i = 0; i < sizeof(soldier)/sizeof(*soldier); i++) {
+		soldier[i] = md2_new("models/monsters/soldier/tris.md2");
+		if ( soldier[i] ) {
+			vector_t v;
+			v[X] = 50 + 50 * i;
+			v[Y] = 0;
+			v[Z] = 0;
+			md2_skin(soldier[i], i);
+			md2_animate(soldier[i], 146, 214);
+			md2_spawn(soldier[i], v);
+		}
 	}
 
 	md5_load("data/d3/demo/models/md5/chars/marine.md5mesh",
@@ -98,11 +101,17 @@ void clcmd_map(int s, char *arg)
 
 void cl_render(void)
 {
+	int i;
 	if ( map )
 		q2bsp_render(map);
 	md5_render();
-	if ( soldier )
-		md2_render(soldier);
+	for(i = 0; i < sizeof(soldier)/sizeof(*soldier); i++) {
+		if ( !soldier[i] )
+			continue;
+		glPushMatrix();
+		md2_render(soldier[i]);
+		glPopMatrix();
+	}
 }
 
 void cl_frame(void)

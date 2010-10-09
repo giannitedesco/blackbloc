@@ -202,9 +202,12 @@ void md2_render(md2_model_t m)
 	/* Backwards winding order in glcmds */
 	glCullFace(GL_FRONT);
 
-	tex_bind(m->skin);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	if ( m->skin ) {
+		tex_bind(m->skin);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	}
 
 	while(1) {
 		count = *order++;
