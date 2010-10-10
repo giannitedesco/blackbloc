@@ -764,6 +764,8 @@ static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
 static void do_free(struct _q2bsp *map)
 {
 	unsigned int i;
+	for(i = 0; i < map->num_mtex; i++)
+		tex_put(map->mtex[i].image);
 	free(map->mtex);
 	free(map->mvert);
 	free(map->medge);
@@ -775,8 +777,6 @@ static void do_free(struct _q2bsp *map)
 	free(map->visofs);
 	free(map->msurfedge);
 	free(map->vis);
-	for(i = 0; i < map->num_mtex; i++)
-		tex_put(map->mtex[i].image);
 	free(map);
 }
 
