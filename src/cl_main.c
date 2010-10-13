@@ -104,11 +104,12 @@ static int load_map(const char *arg)
 	tmp_map = q2bsp_load(buf);
 	if ( NULL == tmp_map ) {
 		con_printf("%s: map not found\n", buf);
-		return;
+		return 0;
 	}
 
 	q2bsp_free(map);
 	map = tmp_map;
+	return 1;
 }
 
 void clcmd_map(int s, char *arg)

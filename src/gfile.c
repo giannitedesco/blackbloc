@@ -34,7 +34,7 @@ static const struct gfile_nidx *gfile_nidx(struct _gfs *fs,
 	const uint8_t *ptr;
 	size_t ofs;
 
-	ofs = be_32(b->b_ofs);
+	ofs = be32toh(b->b_ofs);
 
 	if ( fs->fs_map + ofs + sizeof(*n) > fs->fs_end )
 		return NULL;
@@ -42,8 +42,8 @@ static const struct gfile_nidx *gfile_nidx(struct _gfs *fs,
 	ptr = (fs->fs_map + ofs);
 	n = (struct gfile_nidx *)ptr;
 
-	n += sizeof(struct gfile_name) * be_32(n->i_num_names);
-	n += be_32(n->i_strtab_sz);
+	n += sizeof(struct gfile_name) * be32toh(n->i_num_names);
+	n += be32toh(n->i_strtab_sz);
 	if ( (uint8_t *)n > fs->fs_end )
 		return NULL;
 
@@ -61,7 +61,7 @@ static struct gfile_blk *gfile_blk(struct _gfs *fs,
 	unsigned int num_blk;
 
 	h = (struct gfile_hdr *)fs->fs_map;
-	num_blk = be_32(h->h_num_blk);
+	num_blk = be32toh(h->h_num_blk);
 
 	b = h->h_blk + num_blk;
 	if ( (uint8_t *)b > fs->fs_end )
@@ -69,9 +69,9 @@ static struct gfile_blk *gfile_blk(struct _gfs *fs,
 
 	/* linear scan for now */
 	for(b = h->h_blk, i = 0; i < num_blk; i++,b++) {
-		if ( be_16(b->b_type) != type )
+		if ( be16toh(b->b_type) != type )
 			continue;
-		if ( be_16(b->b_id) != id )
+		if ( be16toh(b->b_id) != id )
 			continue;
 		return b;
 	}
@@ -114,7 +114,7 @@ gfs_t gfs_open(const char *fn)
 
 	fs->fs_end  = fs->fs_map + fs_len;
 	h = (const struct gfile_hdr *)fs->fs_map;
-	if ( be_32(h->h_magic) != GFILE_MAGIC )
+	if ( be32toh(h->h_magic) != GFILE_MAGIC )
 		goto err_unmap;
 	
 	/* The DB is basically "live" now as far as accessor methods
@@ -129,7 +129,7 @@ gfs_t gfs_open(const char *fn)
 	if ( n == NULL )
 		goto err_unmap;
 	
-	fs->fs_num_names = be_32(n->i_num_names);
+	fs->fs_num_names = be32toh(n->i_num_names);
 	fs->fs_name = n->i_name;
 
 	con_printf("%s: %s: %u files\n",
@@ -171,16 +171,16 @@ int gfile_open(gfs_t fs, struct gfile *f, const char *name)
 
 		i = n / 2;
 		ret = strcmp(name,
-				(char *)fs->fs_map + be_32(ptr[i].n_name));
+				(char *)fs->fs_map + be32toh(ptr[i].n_name));
 		if ( ret < 0 ) {
 			n = i;
 		}else if ( ret > 0 ) {
 			ptr = ptr + (i + 1);
 			n = n - (i + 1);
 		}else{
-			f->f_ptr = fs->fs_map + be_32(ptr[i].n_ofs);
-			f->f_len = be_32(ptr[i].n_len);
-			f->f_name = (char *)fs->fs_map + be_32(ptr[i].n_name);
+			f->f_ptr = fs->fs_map + be32toh(ptr[i].n_ofs);
+			f->f_len = be32toh(ptr[i].n_len);
+			f->f_name = (char *)fs->fs_map + be32toh(ptr[i].n_name);
 			assert((uint8_t *)f->f_ptr + f->f_len < fs->fs_end);
 			return 1;
 		}

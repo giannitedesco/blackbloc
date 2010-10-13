@@ -148,9 +148,9 @@ int q2wal_load(const char *name)
 
 	/* Fill in the details from the header */
 	wal->name = t->name;
-	ofs = le_32(t->offsets[0]);
-	wal->s_width = le_32(t->width);
-	wal->s_height = le_32(t->height);
+	ofs = le32toh(t->offsets[0]);
+	wal->s_width = le32toh(t->width);
+	wal->s_height = le32toh(t->height);
 	wal->s_pixels = wal->f.f_ptr + ofs;
 	wal->mipmap[0].pixels = NULL;
 	wal->upload = q2wal_upload;

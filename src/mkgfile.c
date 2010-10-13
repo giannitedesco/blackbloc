@@ -85,8 +85,8 @@ err:
 static int dump_header(FILE *f, uint32_t *cur, uint32_t num_blk)
 {
 	struct gfile_hdr h;
-	h.h_magic = be_32(GFILE_MAGIC);
-	h.h_num_blk = be_32(num_blk);
+	h.h_magic = be32toh(GFILE_MAGIC);
+	h.h_num_blk = be32toh(num_blk);
 	if ( fwrite(&h, sizeof(h), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
@@ -99,10 +99,10 @@ static int dump_block(FILE *f, uint32_t *cur, uint16_t type, uint16_t id,
 			uint32_t ofs, uint32_t len)
 {
 	struct gfile_blk b;
-	b.b_type = be_16(type);
-	b.b_id = be_16(id);
-	b.b_ofs = be_32(ofs);
-	b.b_len = be_32(len);
+	b.b_type = be16toh(type);
+	b.b_id = be16toh(id);
+	b.b_ofs = be32toh(ofs);
+	b.b_len = be32toh(len);
 	b.b_flags = 0;
 	if ( fwrite(&b, sizeof(b), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
@@ -117,8 +117,8 @@ static int dump_nidx(FILE *f, uint32_t *cur,
 			uint32_t strtab_sz)
 {
 	struct gfile_nidx idx;
-	idx.i_num_names = be_32(num_names);
-	idx.i_strtab_sz = be_32(strtab_sz);
+	idx.i_num_names = be32toh(num_names);
+	idx.i_strtab_sz = be32toh(strtab_sz);
 	if ( fwrite(&idx, sizeof(idx), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());
 		return 0;
@@ -132,10 +132,10 @@ static int dump_name(FILE *f, uint32_t *cur,
 			uint32_t name, uint16_t nlen)
 {
 	struct gfile_name n;
-	n.n_ofs = be_32(ofs);
-	n.n_len = be_32(len);
-	n.n_name = be_32(name);
-	n.n_nlen = be_16(nlen);
+	n.n_ofs = be32toh(ofs);
+	n.n_len = be32toh(len);
+	n.n_name = be32toh(name);
+	n.n_nlen = be16toh(nlen);
 	n.n_mode = 0;
 	if ( fwrite(&n, sizeof(n), 1, f) != 1 || ferror(f) ) {
 		fprintf(stderr, "%s: fwrite: %s\n", _func, get_err());

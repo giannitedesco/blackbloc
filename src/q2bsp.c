@@ -301,7 +301,7 @@ static int q2bsp_nodes(struct _q2bsp *map, const void *data, uint32_t len)
 		out->maxs[1] = (short)le16toh(in->maxs[2]);
 		out->maxs[2] = (short)le16toh(in->maxs[0]);
 
-		p = le_32(in->planenum);
+		p = le32toh(in->planenum);
 		out->plane = map->mplane + p;
 
 		out->firstsurface = le16toh(in->firstface);
@@ -310,7 +310,7 @@ static int q2bsp_nodes(struct _q2bsp *map, const void *data, uint32_t len)
 		out->visframe = 0;
 
 		for(j=0; j<2; j++) {
-			p = le_32(in->children[j]);
+			p = le32toh(in->children[j]);
 			if ( p>= 0 )
 				out->children[j] = map->mnode + p;
 			else
@@ -360,7 +360,7 @@ static int q2bsp_leafs(struct _q2bsp *map, const void *data, uint32_t len)
 		out->maxs[1] = (short)le16toh(in->maxs[2]);
 		out->maxs[2] = (short)le16toh(in->maxs[0]);
 
-		p = (int)le_32(in->contents);
+		p = (int)le32toh(in->contents);
 		out->contents = p;
 
 		out->cluster = (short)le16toh(in->cluster);
@@ -378,7 +378,7 @@ static int q2bsp_visibility(struct _q2bsp *map, const void *data, uint32_t len)
 {
 	const struct bsp_vis *in = data;
 	struct bsp_vis *out;
-	int num = le_32(in->numclusters);
+	int num = le32toh(in->numclusters);
 	int i;
 
 	map->map_visibility = data;
@@ -396,8 +396,8 @@ static int q2bsp_visibility(struct _q2bsp *map, const void *data, uint32_t len)
 	out->numclusters = num;
 
 	for(i=0; i<num; i++) {
-		out->bitofs[i][DVIS_PVS] = le_32(in->bitofs[i][DVIS_PVS]);
-		out->bitofs[i][DVIS_PHS] = le_32(in->bitofs[i][DVIS_PHS]);
+		out->bitofs[i][DVIS_PVS] = le32toh(in->bitofs[i][DVIS_PVS]);
+		out->bitofs[i][DVIS_PHS] = le32toh(in->bitofs[i][DVIS_PHS]);
 	}
 
 	map->visofs = out;
@@ -478,7 +478,7 @@ static int q2bsp_faces(struct _q2bsp *map, const void *data, uint32_t len)
 	lm_init_block(map);
 
 	for(surfnum=0; surfnum<count; surfnum++, in++, out++) {
-		out->firstedge = (int)le_32(in->firstedge);
+		out->firstedge = (int)le32toh(in->firstedge);
 		out->numedges = (short)le16toh(in->numedges);
 		out->flags = 0;
 		out->polys = NULL;
@@ -498,7 +498,7 @@ static int q2bsp_faces(struct _q2bsp *map, const void *data, uint32_t len)
 		for(i=0; i<MAXLIGHTMAPS; i++)
 			out->styles[i] = in->styles[i];
 
-		i = le_32(in->lightofs);
+		i = le32toh(in->lightofs);
 		if ( i == -1 )
 			out->samples = NULL;
 		else
@@ -550,13 +550,13 @@ static int q2bsp_planes(struct _q2bsp *map, const void *data, uint32_t len)
 	for(i=0; i<count; i++,in++,out++) {
 		bits=0;
 
-		out->normal[0] = le_float(in->normal[1]);
-		out->normal[1] = le_float(in->normal[2]);
-		out->normal[2] = le_float(in->normal[0]);
+		out->normal[0] = le32toh(in->normal[1]);
+		out->normal[1] = le32toh(in->normal[2]);
+		out->normal[2] = le32toh(in->normal[0]);
 
 		out->normal[W] = 0;
-		out->dist = le_float(in->dist);
-		out->type = le_32(in->type);
+		out->dist = le32toh(in->dist);
+		out->type = le32toh(in->type);
 		out->signbits = bits;
 
 		switch(out->type) {
@@ -676,9 +676,9 @@ static int q2bsp_vertexes(struct _q2bsp *map, const void *data, int len)
 	map->mvert = out;
 
 	for(i=0; i<count; i++,in++,out++) {
-		out->point[0] = le_float(in->point[1]);
-		out->point[1] = le_float(in->point[2]);
-		out->point[2] = le_float(in->point[0]);
+		out->point[0] = le32toh(in->point[1]);
+		out->point[1] = le32toh(in->point[2]);
+		out->point[2] = le32toh(in->point[0]);
 	}
 
 	return 1;
@@ -726,16 +726,16 @@ static int q2bsp_texinfo(struct _q2bsp *map, const void *data, uint32_t len)
 
 	for(i=0; i < count; i++, in++, out++) {
 		for(j=0; j<2; j++) {
-			out->vecs[j][0] = le_float(in->vecs[j][1]);
-			out->vecs[j][1] = le_float(in->vecs[j][2]);
-			out->vecs[j][2] = le_float(in->vecs[j][0]);
-			out->vecs[j][3] = le_float(in->vecs[j][3]);
+			out->vecs[j][0] = le32toh(in->vecs[j][1]);
+			out->vecs[j][1] = le32toh(in->vecs[j][2]);
+			out->vecs[j][2] = le32toh(in->vecs[j][0]);
+			out->vecs[j][3] = le32toh(in->vecs[j][3]);
 		}
 
-		out->flags = le_32(in->flags);
+		out->flags = le32toh(in->flags);
 
 		/* XXX: Needs checking */
-		next = le_32(in->nexttexinfo);
+		next = le32toh(in->nexttexinfo);
 		if (next > 0)
 			out->next = map->mtex + next;
 		else
