@@ -46,7 +46,7 @@ static struct md2_mesh *md2_mesh_load(const char *name)
 	memcpy(&hdr, mesh->f.f_ptr, sizeof(hdr));
 	tmp = (uint32_t *)&hdr;
 	for(i = 0; i < sizeof(hdr) / 4; i++) {
-		*tmp = le_32(*tmp);
+		*tmp = le32toh(*tmp);
 		tmp++;
 	}
 
@@ -107,12 +107,12 @@ static struct md2_mesh *md2_mesh_load(const char *name)
 	/* These values all need byteswapping */
 	f = mesh->f.f_ptr + hdr.ofs_frames;
 	for(i = 0; i < hdr.num_frames; i++) {
-		mesh->frame[i].scale[0] = le_float(f->scale[1]);
-		mesh->frame[i].scale[1] = le_float(f->scale[2]);
-		mesh->frame[i].scale[2] = le_float(f->scale[0]);
-		mesh->frame[i].translate[0] = le_float(f->translate[1]);
-		mesh->frame[i].translate[1] = le_float(f->translate[2])+26;
-		mesh->frame[i].translate[2] = le_float(f->translate[0]);
+		mesh->frame[i].scale[0] = le32toh(f->scale[1]);
+		mesh->frame[i].scale[1] = le32toh(f->scale[2]);
+		mesh->frame[i].scale[2] = le32toh(f->scale[0]);
+		mesh->frame[i].translate[0] = le32toh(f->translate[1]);
+		mesh->frame[i].translate[1] = le32toh(f->translate[2]);
+		mesh->frame[i].translate[2] = le32toh(f->translate[0]);
 		memcpy(mesh->frame[i].name, f->name, sizeof(mesh->frame[i].name));
 		mesh->frame[i].verts = f->verts;
 		f = ((void *)f) + sizeof(*f) + sizeof(*f->verts) * hdr.num_xyz;
@@ -133,7 +133,7 @@ static struct md2_mesh *md2_mesh_load(const char *name)
 
 	tmp2 = mesh->f.f_ptr + hdr.ofs_glcmds;
 	for(i = 0; i < hdr.num_glcmds; i++) {
-		mesh->glcmds[i] = le_32(tmp2[i]);
+		mesh->glcmds[i] = le32toh(tmp2[i]);
 	}
 
 	if ( mesh->glcmds[hdr.num_glcmds-1] != 0 ) {
