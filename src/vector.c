@@ -8,6 +8,7 @@
 * them. Kinda sucks that we use GCC extensions but fuck it, GCC is
 * king.
 */
+#include <GL/gl.h>
 #include <blackbloc/compiler.h>
 #include <blackbloc/vector.h>
 
