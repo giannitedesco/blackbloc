@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #define GFS_MAX_LEN (0xffffffff)
 #define GFS_MIN_LEN (sizeof(struct gfile_hdr) + \
@@ -188,6 +189,7 @@ int gfile_open(gfs_t fs, struct gfile *f, const char *name)
 			break;
 	}
 
+	fprintf(stderr, "gfile: %s: name not found\n", name);
 	return 0;
 }
 
