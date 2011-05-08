@@ -42,12 +42,12 @@ static const struct gfile_nidx *gfile_nidx(struct _gfs *fs,
 	ptr = (fs->fs_map + ofs);
 	n = (struct gfile_nidx *)ptr;
 
-	n += sizeof(struct gfile_name) * be32toh(n->i_num_names);
-	n += be32toh(n->i_strtab_sz);
-	if ( (uint8_t *)n > fs->fs_end )
+	ptr += sizeof(struct gfile_name) * be32toh(n->i_num_names);
+	ptr += be32toh(n->i_strtab_sz);
+
+	if ( (uint8_t *)ptr > fs->fs_end )
 		return NULL;
 
-	n = (const struct gfile_nidx *)ptr;
 	return n;
 }
 
