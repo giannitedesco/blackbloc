@@ -75,16 +75,16 @@ struct bsp_lump {
 #define IDBSPHEADER	(('P'<<24)+('S'<<16)+('B'<<8)+'I')
 #define BSPVERSION	38
 struct bsp_header {
-	int ident;
-	int version;
+	int32_t ident;
+	int32_t version;
 	struct bsp_lump lumps[HEADER_LUMPS];
 };
 
 struct bsp_model {
 	float mins[3],maxs[3];
 	float origin[3]; /* for sounds or lights */
-	int headnode;
-	int firstface, numfaces;
+	int32_t headnode;
+	int32_t firstface, numfaces;
 };
 
 struct bsp_vertex {
@@ -101,68 +101,68 @@ struct bsp_vertex {
 struct bsp_plane {
 	float normal[3];
 	float dist;
-	int type;
+	int32_t type;
 };
 
 /* TODO: CONTENTS + SURF flags */
 
 struct bsp_node {
-	int planenum;
-	int children[2];
-	short mins[3];
-	short maxs[3];
-	unsigned short firstface;
-	unsigned short numfaces; /* counting both sides */
+	int32_t planenum;
+	int32_t children[2];
+	int16_t mins[3];
+	int16_t maxs[3];
+	uint16_t firstface;
+	uint16_t numfaces; /* counting both sides */
 };
 
 struct bsp_texinfo {
 	float vecs[2][4]; /* [s/t][xyz offset] */
-	int flags; /* miptex flags + overrides */
-	int value; /* light emission, etc. */
+	int32_t flags; /* miptex flags + overrides */
+	int32_t value; /* light emission, etc. */
 	char texture[32];
-	int nexttexinfo; /* for animations, -1 = end of chain */
+	int32_t nexttexinfo; /* for animations, -1 = end of chain */
 };
 
 /* note that edge 0 is never used, because negative edge nums are used
  * for counterclockwise use of the edge in a face
 */
 struct bsp_edge {
-	unsigned short v[2]; /* vertex numbers */
+	uint16_t v[2]; /* vertex numbers */
 };
 
 #define MAXLIGHTMAPS 4
 struct bsp_face {
-	unsigned short planenum;
-	short side;
-	int firstedge;
-	short numedges;
-	short texinfo;
+	uint16_t planenum;
+	int16_t side;
+	int32_t firstedge;
+	int16_t numedges;
+	int16_t texinfo;
 
-	unsigned char styles[MAXLIGHTMAPS];
-	int lightofs; /* start of [numstyles*surfsize] samples */
+	int8_t styles[MAXLIGHTMAPS];
+	int32_t lightofs; /* start of [numstyles*surfsize] samples */
 };
 
 struct bsp_leaf {
-	int contents; /* OR of all brushes */
-	short cluster;
-	short area;
-	short mins[3];
-	short maxs[3];
-	unsigned short firstleafface;
-	unsigned short numleaffaces;
-	unsigned short firstleafbrush;
-	unsigned short numleafbrushes;
+	int32_t contents; /* OR of all brushes */
+	int16_t cluster;
+	int16_t area;
+	int16_t mins[3];
+	int16_t maxs[3];
+	uint16_t firstleafface;
+	uint16_t numleaffaces;
+	uint16_t firstleafbrush;
+	uint16_t numleafbrushes;
 };
 
 struct bsp_brushside {
-	unsigned short planenum;
-	short texinfo;
+	uint16_t planenum;
+	int16_t texinfo;
 };
 
 struct bsp_brush {
-	int firstside;
-	int numsides;
-	int contents;
+	int32_t firstside;
+	int32_t numsides;
+	int32_t contents;
 };
 
 #define ANGLE_UP 	-1
@@ -184,13 +184,13 @@ struct bsp_vis {
  * hearable even if the vis info says that it should be
 */
 struct bsp_areaportal{
-	int portalnum;
-	int otherarea;
+	int32_t portalnum;
+	int32_t otherarea;
 };
 
 struct bsp_area {
-	int numareaportals;
-	int firstareaportal;
+	int32_t numareaportals;
+	int32_t firstareaportal;
 };
 
 /* In-memory representation */
