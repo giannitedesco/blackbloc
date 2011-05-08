@@ -42,7 +42,7 @@ static void to_buf(struct _textreader *txt, const char *tmp)
 	}
 
 	snprintf(txt->txt_retbuf, txt->txt_buflen,
-		 "%.*s", len, txt->txt_ptr);
+		 "%.*s", (int)len, txt->txt_ptr);
 }
 
 char *textreader_gets(textreader_t txt)
