@@ -25,8 +25,31 @@ struct playerstate me={
 static q2bsp_t map;
 
 static md2_model_t soldier[6];
-static md5_model_t marine[6];
+static md5_model_t marine[20];
 static gfs_t gfs;
+
+static const char * const anims[] = {
+	"models/md5/chars/marscity/marscity_marine1_convo2.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_talk2.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_idle2.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_idle1.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_idle1.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_convo1.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_idle3.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_stand.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_talk3.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_talk2.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_convo3.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_talk1.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_convo1.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_talk1.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_stand.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_convo3.md5anim",
+	"models/md5/chars/marscity/marscity_marine2_convo2.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_talk3.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_idle3.md5anim",
+	"models/md5/chars/marscity/marscity_marine1_idle2.md5anim",
+};
 
 int game_open(struct gfile *f, const char *name)
 {
@@ -63,9 +86,9 @@ int cl_init(void)
 
 	if ( !hud_init() )
 		return 0;
-
+#if 0
 	for(i = 0; i < sizeof(soldier)/sizeof(*soldier); i++) {
-		soldier[i] = md2_new("models/monsters/soldier/tris.md2");
+		soldier[i] = md2_new("md2_mdl/monsters/soldier/tris.md2");
 		if ( soldier[i] ) {
 			vector_t v;
 			v[X] = 50 + 30 * i;
@@ -76,17 +99,15 @@ int cl_init(void)
 			md2_spawn(soldier[i], v);
 		}
 	}
-
+#endif
 	for(i = 0; i < sizeof(marine)/sizeof(*marine); i++) {
-		marine[i] = md5_new("d3/demo/models/md5/chars/marine.md5mesh");
+		marine[i] = md5_new("models/md5/chars/marine.md5mesh");
 		if ( marine[i] ) {
 			vector_t v;
 			v[Z] = 0;
 			v[Y] = 0;
 			v[Z] = 50 + 50 * i;
-			md5_animate(marine[i],
-					"d3/demo/models/md5/chars/marscity/"
-					"marscity_marine2_idle2.md5anim");
+			md5_animate(marine[i], anims[i]);
 			md5_spawn(marine[i], v);
 		}
 	}

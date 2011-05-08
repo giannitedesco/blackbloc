@@ -20,7 +20,7 @@ struct md5_vertex_t {
 	vec2_t st;
 
 	int start; /* start weight */
-	int count; /* weight count */
+	unsigned int count; /* weight count */
 };
 
 /* Triangle */

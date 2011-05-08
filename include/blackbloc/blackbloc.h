@@ -34,6 +34,8 @@
 #include <endian.h>
 #endif
 
+#include <GL/gl.h>
+
 #include <blackbloc/list.h>
 #include <blackbloc/vector.h>
 #include <blackbloc/gfile.h>

@@ -289,7 +289,7 @@ static struct md5_mesh *do_mesh_load(const char *filename)
 
 	for(i = 0; i < mesh->num_meshes; i++) {
 		char buf[strlen(mesh->meshes[i].shader) + 13];
-		snprintf(buf, sizeof(buf), "d3/demo/%s.tga",
+		snprintf(buf, sizeof(buf), "%s.tga",
 				mesh->meshes[i].shader);
 		mesh->meshes[i].skin = tga_get_by_name(buf);
 	}

@@ -26,7 +26,6 @@
 
 #include <math.h>
 #include <config.h>
-#include <GL/gl.h>
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>
 #endif
