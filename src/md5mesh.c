@@ -45,11 +45,11 @@
 /**
  * Load an MD5 model from file.
  */
-static int ReadMD5Model(const char *filename, struct md5_mesh *mdl)
+static int mesh_read(const char *filename, struct md5_mesh *mdl)
 {
 	struct gfile f;
 	textreader_t txt;
-	unsigned int version, curr_mesh;
+	unsigned int version, curr_mesh = 0;
 	unsigned int i, ret = 0;
 	char *line;
 
@@ -106,16 +106,17 @@ static int ReadMD5Model(const char *filename, struct md5_mesh *mdl)
 			}
 		} else if (strncmp(line, "mesh {", 6) == 0) {
 			struct md5_mesh_part *mesh = &mdl->meshes[curr_mesh];
-			int vert_index = 0;
-			int tri_index = 0;
-			int weight_index = 0;
+			int v = 0;
+			int t = 0;
+			int w = 0;
 			float fdata[4];
 			int idata[3];
 
 			while ((line[0] != '}')) {
+				char *shptr;
+
 				/* Read whole line */
 				line = textreader_gets(txt);
-				char *shptr;
 
 				if ( (shptr = strstr(line, "shader ")) ) {
 					int quote = 0, j = 0;
@@ -183,46 +184,36 @@ static int ReadMD5Model(const char *filename, struct md5_mesh *mdl)
 				} else
 				    if (sscanf
 					(line, " vert %d ( %f %f ) %d %d",
-					 &vert_index, &fdata[0], &fdata[1],
+					 &v, &fdata[0], &fdata[1],
 					 &idata[0], &idata[1]) == 5) {
 					/* Copy vertex data */
-					mesh->vertices[vert_index].st[0] =
-					    fdata[0];
-					mesh->vertices[vert_index].st[1] =
-					    fdata[1];
-					mesh->vertices[vert_index].start =
-					    idata[0];
-					mesh->vertices[vert_index].count =
-					    idata[1];
+					mesh->vertices[v].st[0] = fdata[0];
+					mesh->vertices[v].st[1] = fdata[1];
+					mesh->vertices[v].start = idata[0];
+					mesh->vertices[v].count = idata[1];
 				} else
 				    if (sscanf
-					(line, " tri %d %d %d %d", &tri_index,
+					(line, " tri %d %d %d %d", &t,
 					 &idata[0], &idata[1],
 					 &idata[2]) == 4) {
 					/* Copy triangle data */
-					mesh->triangles[tri_index].index[0] =
-					    idata[1];
-					mesh->triangles[tri_index].index[1] =
-					    idata[2];
-					mesh->triangles[tri_index].index[2] =
-					    idata[0];
+					mesh->triangles[t].index[0] = idata[1];
+					mesh->triangles[t].index[1] = idata[2];
+					mesh->triangles[t].index[2] = idata[0];
 				} else
 				    if (sscanf
 					(line, " weight %d %d %f ( %f %f %f )",
-					 &weight_index, &idata[0], &fdata[3],
+					 &w, &idata[0], &fdata[3],
 					 &fdata[0], &fdata[1],
 					 &fdata[2]) == 6) {
 					/* Copy vertex data */
-					mesh->weights[weight_index].joint =
-					    idata[0];
-					mesh->weights[weight_index].bias =
-					    fdata[3];
-					mesh->weights[weight_index].pos[0] =
-					    fdata[0];
-					mesh->weights[weight_index].pos[1] =
-					    fdata[1];
-					mesh->weights[weight_index].pos[2] =
-					    fdata[2];
+					mesh->weights[w].joint = idata[0];
+					mesh->weights[w].bias = fdata[3];
+					v_zero(mesh->weights[w].normal);
+					v_zero(mesh->weights[w].tangent);
+					mesh->weights[w].pos[0] = fdata[0];
+					mesh->weights[w].pos[1] = fdata[1];
+					mesh->weights[w].pos[2] = fdata[2];
 				}
 			}
 
@@ -239,10 +230,170 @@ out_close:
 	return ret;
 }
 
+static void vertex_final_position(struct md5_mesh *mdl,
+					struct md5_mesh_part *mesh,
+					struct md5_vertex_t *vert,
+					vec3_t out)
+{
+	unsigned int w;
+	vec3_t ret;
+
+	v_zero(ret);
+
+	for(w = 0; w < vert->count; w++) {
+		struct md5_weight_t *weight;
+		struct md5_joint_t *joint;
+		vec3_t disp, t;
+
+		weight = &mesh->weights[vert->start + w];
+		joint = &mdl->baseSkel[weight->joint];
+
+		Quat_rotatePoint(joint->orient, weight->pos, disp);
+		v_copy(t, joint->pos);
+		v_add(t, t, disp);
+
+		t[0] *= weight->bias;
+		t[1] *= weight->bias;
+		t[2] *= weight->bias;
+
+		v_add(ret, ret, t);
+	}
+
+	v_copy(out, ret);
+}
+
+/* sort of inverse of the above function */
+static void back_to_bone_space(struct md5_mesh *mdl,
+					struct md5_mesh_part *mesh,
+					struct md5_vertex_t *vert,
+					vec3_t norm,
+					vec3_t tan)
+{
+	unsigned int w;
+	for(w = 0; w < vert->count; w++) {
+		struct md5_weight_t *weight;
+		struct md5_joint_t *joint;
+		vec3_t jnorm;
+		vec3_t jtan;
+
+		weight = &mesh->weights[vert->start + w];
+		joint = &mdl->baseSkel[weight->joint];
+
+		Quat_rotatePoint(joint->orient, norm, jnorm);
+		v_invert(jnorm);
+		v_add(weight->normal, weight->normal, jnorm);
+
+		Quat_rotatePoint(joint->orient, tan, jtan);
+		v_invert(jtan);
+		v_add(weight->tangent, weight->tangent, jtan);
+	}
+}
+
+static int mesh_normals_and_tangents(struct md5_mesh *mdl,
+					struct md5_mesh_part *mesh)
+{
+	unsigned int v, t, w;
+	vec3_t *verts = NULL, *norms = NULL, *tangs = NULL;
+
+	verts = calloc(mesh->num_verts, sizeof(*verts));
+	norms = calloc(mesh->num_verts, sizeof(*verts));
+	tangs = calloc(mesh->num_verts, sizeof(*verts));
+	if ( NULL == verts || NULL == norms || NULL == tangs )
+		goto err;
+
+	/* translate model in to bind pose skeleton */
+	for(v = 0; v < mesh->num_verts; v++) {
+		struct md5_vertex_t *vert = mesh->vertices + v;
+		vertex_final_position(mdl, mesh, vert, verts[v]);
+	}
+
+	for(t = 0; t < mesh->num_tris; t++) {
+		struct md5_triangle_t *tri = mesh->triangles + t;
+		vec3_t v1, v2, norm;
+		vec2_t st1, st2;
+		vec3_t tan;
+		float co;
+
+		/* calculate normals */
+		v_sub(v1, verts[tri->index[2]], verts[tri->index[0]]);
+		v_sub(v2, verts[tri->index[1]], verts[tri->index[0]]);
+		v_crossproduct(norm, v1, v2);
+
+		v_add(norms[tri->index[0]], norms[tri->index[0]], norm);
+		v_add(norms[tri->index[1]], norms[tri->index[1]], norm);
+		v_add(norms[tri->index[2]], norms[tri->index[2]], norm);
+
+		/* calculate tangents */
+		st1[0] = mesh->vertices[tri->index[2]].st[0] -
+			mesh->vertices[tri->index[0]].st[0];
+		st1[1] = mesh->vertices[tri->index[2]].st[1] -
+			mesh->vertices[tri->index[0]].st[1];
+
+		st2[0] = mesh->vertices[tri->index[1]].st[0] -
+			mesh->vertices[tri->index[0]].st[0];
+		st2[1] = mesh->vertices[tri->index[1]].st[1] -
+			mesh->vertices[tri->index[0]].st[1];
+
+		co = 1.0 / (st1[0] * st2[1] - st2[0] * st1[1]);
+
+		tan[0] = co * ((v1[0] * st2[1])  + (v2[0] * -st1[1]));
+		tan[1] = co * ((v1[1] * st2[1])  + (v2[1] * -st1[1]));
+		tan[2] = co * ((v1[2] * st2[1])  + (v2[2] * -st1[1]));
+
+		v_add(tangs[tri->index[0]], tangs[tri->index[0]], tan);
+		v_add(tangs[tri->index[1]], tangs[tri->index[1]], tan);
+		v_add(tangs[tri->index[2]], tangs[tri->index[2]], tan);
+	}
+
+	/* normalize all the tangent and normal contributions */
+	for(v = 0; v < mesh->num_verts; v++) {
+		v_normalize(norms[v]);
+		v_normalize(tangs[v]);
+	}
+
+	/* translate back in to bone space */
+	for(v = 0; v < mesh->num_verts; v++) {
+		struct md5_vertex_t *vert = mesh->vertices + v;
+		back_to_bone_space(mdl, mesh, vert, norms[v], tangs[v]);
+	}
+
+	/* normalize all those contributions */
+	for(w = 0; w < mesh->num_weights; w++) {
+		struct md5_weight_t *weight;
+		weight = &mesh->weights[w];
+		v_normalize(weight->normal);
+		v_normalize(weight->tangent);
+	}
+
+	free(verts);
+	free(norms);
+	free(tangs);
+	return 1;
+err:
+	free(verts);
+	free(norms);
+	free(tangs);
+	return 0;
+}
+
+static int calc_normals_and_tangents(struct md5_mesh *mdl)
+{
+	unsigned int i;
+
+	for(i = 0; i < mdl->num_meshes; i++) {
+		struct md5_mesh_part *mesh = mdl->meshes + i;
+
+		if ( !mesh_normals_and_tangents(mdl, mesh) )
+			return 0;
+	}
+
+	return 1;
+}
+
 /**
  * Free resources allocated for the model.
  */
-static void FreeModel(struct md5_mesh *mdl)
+static void mesh_free(struct md5_mesh *mdl)
 {
 	unsigned int i;
 
@@ -278,8 +429,10 @@ static struct md5_mesh *do_mesh_load(const char *filename)
 		return NULL;
 
 	/* Load MD5 model file */
-	if (!ReadMD5Model(filename, mesh)) {
-	}
+	if (!mesh_read(filename, mesh))
+		goto err;
+
+	calc_normals_and_tangents(mesh);
 
 	mesh->name = strdup(filename);
 	if ( NULL == mesh->name )
@@ -288,17 +441,28 @@ static struct md5_mesh *do_mesh_load(const char *filename)
 	con_printf("md5: mesh loaded: %s\n", mesh->name);
 
 	for(i = 0; i < mesh->num_meshes; i++) {
-		char buf[strlen(mesh->meshes[i].shader) + 13];
+		char buf[strlen(mesh->meshes[i].shader) + 26];
 		snprintf(buf, sizeof(buf), "%s.tga",
 				mesh->meshes[i].shader);
 		mesh->meshes[i].skin = tga_get_by_name(buf);
+		snprintf(buf, sizeof(buf), "%s_local.tga",
+				mesh->meshes[i].shader);
+		mesh->meshes[i].normalmap = tga_get_by_name(buf);
+#if 0
+		snprintf(buf, sizeof(buf), "%s_s.tga",
+				mesh->meshes[i].shader);
+		mesh->meshes[i].specularmap = tga_get_by_name(buf);
+		snprintf(buf, sizeof(buf), "%s_h.tga",
+				mesh->meshes[i].shader);
+		mesh->meshes[i].heightmap = tga_get_by_name(buf);
+#endif
 	}
 
 	mesh->ref = 1;
 	list_add_tail(&mesh->list, &md5_meshes);
 	return mesh;
 err:
-	FreeModel(mesh);
+	mesh_free(mesh);
 	free(mesh->name);
 	free(mesh);
 	return NULL;
@@ -322,6 +486,6 @@ void md5_mesh_put(struct md5_mesh *mesh)
 {
 	assert(mesh->ref);
 	if ( 0 == --mesh->ref ) {
-		FreeModel(mesh);
+		mesh_free(mesh);
 	}
 }

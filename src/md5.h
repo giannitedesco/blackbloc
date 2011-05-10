@@ -32,6 +32,8 @@ struct md5_triangle_t {
 struct md5_weight_t {
 	int joint;
 	float bias;
+	vector_t normal;
+	vector_t tangent;
 
 	vec3_t pos;
 };
@@ -54,6 +56,9 @@ struct md5_mesh_part {
 
 	char shader[256];
 	texture_t skin;
+	texture_t normalmap;
+//	texture_t specularmap;
+//	texture_t heightmap;
 };
 
 /* MD5 model structure */

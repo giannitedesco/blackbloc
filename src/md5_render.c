@@ -15,9 +15,11 @@
 #include "md5.h"
 
 /* OpenGL vertex array related stuff */
-static int max_verts;
-static int max_tris;
+static unsigned int max_verts;
+static unsigned int max_tris;
 static vec3_t *vertexArray;
+//static vec3_t *tangentArray;
+static vec3_t *normalArray;
 static vec2_t *texArray;
 static GLuint *vertexIndices;
 
@@ -28,6 +30,19 @@ static int AllocVertexArrays(const struct md5_mesh *mesh)
 		vertexArray = malloc(sizeof(vec3_t) * mesh->max_verts);
 		if ( NULL == vertexArray )
 			goto err;
+
+		free(normalArray);
+		normalArray = malloc(sizeof(vec3_t) * mesh->max_verts);
+		if ( NULL == normalArray )
+			goto err;
+
+#if 0
+		free(tangentArray);
+		tangentArray = malloc(sizeof(vec3_t) * mesh->max_verts);
+		if ( NULL == tangentArray )
+			goto err;
+#endif
+
 		free(texArray);
 		texArray = malloc(sizeof(vec2_t) * mesh->max_verts);
 		if ( NULL == texArray )
@@ -45,6 +60,8 @@ static int AllocVertexArrays(const struct md5_mesh *mesh)
 	return 1;
 err:
 	free(vertexArray);
+//	free(tangentArray);
+	free(normalArray);
 	free(texArray);
 	free(vertexIndices);
 	max_verts = max_tris = 0;
@@ -69,7 +86,9 @@ PrepareMesh(const struct md5_mesh_part *mesh, const struct md5_joint_t *skeleton
 
 	/* Setup vertices */
 	for (i = 0; i < mesh->num_verts; ++i) {
-		vec3_t finalVertex = { 0.0f, 0.0f, 0.0f };
+		vec3_t vert = { 0.0f, 0.0f, 0.0f };
+		vec3_t norm = { 0.0f, 0.0f, 0.0f };
+//		vec3_t tan = { 0.0f, 0.0f, 0.0f };
 
 		/* Calculate final vertex to draw with weights */
 		for (j = 0; j < mesh->vertices[i].count; ++j) {
@@ -77,23 +96,44 @@ PrepareMesh(const struct md5_mesh_part *mesh, const struct md5_joint_t *skeleton
 			    = &mesh->weights[mesh->vertices[i].start + j];
 			const struct md5_joint_t *joint
 			    = &skeleton[weight->joint];
+			vec3_t wv;
 
 			/* Calculate transformed vertex for this weight */
-			vec3_t wv;
 			Quat_rotatePoint(joint->orient, weight->pos, wv);
 
 			/* The sum of all weight->bias should be 1.0 */
-			finalVertex[0] +=
+			vert[0] +=
 			    (joint->pos[0] + wv[0]) * weight->bias;
-			finalVertex[1] +=
+			vert[1] +=
 			    (joint->pos[1] + wv[1]) * weight->bias;
-			finalVertex[2] +=
+			vert[2] +=
 			    (joint->pos[2] + wv[2]) * weight->bias;
+
+			Quat_rotatePoint(joint->orient, weight->normal, wv);
+			v_scale(wv, weight->bias);
+			v_add(norm, norm, wv);
+
+//			Quat_rotatePoint(joint->orient, weight->tangent, wv);
+//			v_scale(wv, weight->bias);
+//			v_add(tan, tan, wv);
 		}
 
-		vertexArray[i][0] = finalVertex[0];
-		vertexArray[i][1] = finalVertex[1];
-		vertexArray[i][2] = finalVertex[2];
+		v_normalize(norm);
+//		v_normalize(tan);
+
+		vertexArray[i][0] = vert[0];
+		vertexArray[i][1] = vert[1];
+		vertexArray[i][2] = vert[2];
+
+		normalArray[i][0] = norm[0];
+		normalArray[i][1] = norm[1];
+		normalArray[i][2] = norm[2];
+
+#if 0
+		tangentArray[i][0] = tan[0];
+		tangentArray[i][1] = tan[1];
+		tangentArray[i][2] = tan[2];
+#endif
 		texArray[i][0] = mesh->vertices[i].st[0];
 		texArray[i][1] = 1.0f - mesh->vertices[i].st[1];
 	}
@@ -102,10 +142,11 @@ PrepareMesh(const struct md5_mesh_part *mesh, const struct md5_joint_t *skeleton
 /**
  * Draw the skeleton as lines and points (for joints).
  */
+#if 0
 static void DrawSkeleton(const struct md5_joint_t *skeleton,
 				unsigned int num_joints)
 {
-	int i;
+	unsigned int i;
 
 	/* Draw each joint */
 	glPointSize(5.0f);
@@ -127,7 +168,7 @@ static void DrawSkeleton(const struct md5_joint_t *skeleton,
 	}
 	glEnd();
 }
-
+#endif
 
 static void Animate(const struct _md5_model *model)
 {
@@ -150,11 +191,79 @@ static void Animate(const struct _md5_model *model)
 				model->skeleton);
 }
 
+static int compile_shader(const char *fn, GLint type, GLuint *id)
+{
+	struct gfile file;
+	GLchar *str[1];
+	GLint sz[1];
+	GLint compiled;
+	GLint s;
+
+	if ( !game_open(&file, fn) )
+		return 0;
+
+	s = glCreateShader(type);
+
+	str[0] = (GLchar *)file.f_ptr;
+	sz[0] = file.f_len;
+	glShaderSource(s, 1, str, sz);
+
+	glCompileShader(s);
+
+	glGetShaderiv(s, GL_COMPILE_STATUS, &compiled);
+	if ( !compiled ) {
+		GLsizei len;
+		GLchar buf[512];
+		glGetShaderInfoLog(s, sizeof(buf), &len, buf);
+		con_printf("shader %s compile error: %.*s\n", fn, len, buf);
+		exit(1);
+	}
+
+	*id = s;
+	return 1;
+}
+
+static GLuint prog;
+static GLuint u_Texture, u_normalTexture;
+static void load_shaders(void)
+{
+	static int done;
+	GLuint s_vert;
+	GLuint s_frag;
+	GLint linked;
+
+	if ( done )
+		return;
+
+	prog = glCreateProgram();
+
+	compile_shader("shaders/md5_vert.glsl", GL_VERTEX_SHADER, &s_vert);
+	compile_shader("shaders/md5_frag.glsl", GL_FRAGMENT_SHADER, &s_frag);
+
+	glAttachShader(prog, s_vert);
+	glAttachShader(prog, s_frag);
+
+	glLinkProgram(prog);
+	glGetProgramiv(prog, GL_LINK_STATUS, &linked);
+	if ( !linked ) {
+		GLsizei len;
+		GLchar buf[512];
+		glGetProgramInfoLog(prog, sizeof(buf), &len, buf);
+		con_printf("shaders link error: %.*s\n", len, buf);
+		exit(1);
+	}
+
+	u_Texture = glGetUniformLocationARB(prog, "Texture");
+	u_normalTexture = glGetUniformLocationARB(prog, "normalTexture");
+
+	done = 1;
+}
+
 void md5_render(md5_model_t md5)
 {
 	const struct md5_mesh *mesh = md5->mesh;
 	vector_t org, rot;
-	int i;
+	unsigned int i;
 
 	if ( !AllocVertexArrays(mesh) )
 		return;
@@ -179,17 +288,34 @@ void md5_render(md5_model_t md5)
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
+	//glEnableClientState(GL_VERTEX_ATTRIB_ARRAY);
+	//glEnableVertexAttribArray();
+	glEnableClientState(GL_NORMAL_ARRAY);
+
+	glUseProgram(prog);
+
+	glUniform1iARB(u_Texture,0);
+	glUniform1iARB(u_normalTexture,1);
+
 	/* Draw each mesh of the model */
 	for (i = 0; i < mesh->num_meshes; ++i) {
 		PrepareMesh(&mesh->meshes[i], md5->skeleton);
+		glActiveTextureARB(GL_TEXTURE0);
 		tex_bind(mesh->meshes[i].skin);
+		glActiveTextureARB(GL_TEXTURE1);
+		tex_bind(mesh->meshes[i].normalmap);
+		glActiveTextureARB(GL_TEXTURE0);
 
 		glVertexPointer(3, GL_FLOAT, 0, vertexArray);
+		glNormalPointer(GL_FLOAT, 0, normalArray);
 		glTexCoordPointer(2, GL_FLOAT, 0, texArray);
+//		glVertexAttribPointerARB(tangent_attrib, 3, GL_FLOAT, GL_FALSE, 0, tangentArray);
 
 		glDrawElements(GL_TRIANGLES, mesh->meshes[i].num_tris * 3,
 				GL_UNSIGNED_INT, vertexIndices);
 	}
+
+	glUseProgram(0);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -209,6 +335,8 @@ md5_model_t md5_new(const char *name)
 {
 	struct _md5_model *md5;
 	struct md5_mesh *mesh;
+
+	load_shaders();
 
 	mesh = md5_mesh_get_by_name(name);
 	if ( NULL == mesh )
