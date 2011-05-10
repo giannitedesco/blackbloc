@@ -35,6 +35,7 @@
 #endif
 
 #include <GL/gl.h>
+#include <GL/glext.h>
 
 #include <blackbloc/list.h>
 #include <blackbloc/vector.h>
